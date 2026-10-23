@@ -19,6 +19,7 @@ import { CHAT_POLL_MS } from '@/config';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { CHAT_KEY, messagesKey, useAppendMessage, useChat, useMessages } from '@/lib/chat';
+import { setActiveChatPartner } from '@/lib/push';
 import { fileUrl, formatTime, fullName, messageText } from '@/lib/format';
 import { useColors } from '@/theme';
 import type { Message } from '@/types';
@@ -62,6 +63,12 @@ export default function ChatScreen() {
       )
       .catch(() => undefined);
   }, [conversationId, unread, partnerId, queryClient]);
+
+  // Pas de bannière push pour la discussion affichée
+  useEffect(() => {
+    setActiveChatPartner(partnerId);
+    return () => setActiveChatPartner(null);
+  }, [partnerId]);
 
   // Historique plus ancien en remontant (liste inversée : « fin » = haut de l'écran)
   const loadOlder = () => {

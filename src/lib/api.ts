@@ -78,7 +78,7 @@ export const api = {
       body: JSON.stringify({ conversationId }),
     }),
 
-  // Routes à créer côté API (table DeviceToken dans le schéma partagé).
+  // Jeton Expo Push du téléphone (table DeviceToken).
   registerDevice: (token: string, platform: string) =>
     request<void>('/v1/devices', { method: 'POST', body: JSON.stringify({ token, platform }) }),
   unregisterDevice: (token: string) =>

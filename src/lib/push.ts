@@ -7,14 +7,20 @@ import { api, ApiError } from '@/lib/api';
 
 let currentToken: string | null = null;
 
-// Affiche les notifications même quand l'app est au premier plan.
+/** Discussion affichée à l'écran : ses notifications ne sont pas montrées (déjà visibles). */
+let activePartnerId: number | null = null;
+export function setActiveChatPartner(partnerId: number | null) {
+  activePartnerId = partnerId;
+}
+
+// Affiche les notifications même quand l'app est au premier plan, sauf celles de
+// la discussion ouverte (le message apparaît directement dans le fil).
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
+  handleNotification: async (notification) => {
+    const partnerId = Number(notification.request.content.data?.partnerId);
+    const visible = !(activePartnerId !== null && partnerId === activePartnerId);
+    return { shouldShowBanner: visible, shouldShowList: visible, shouldPlaySound: visible, shouldSetBadge: true };
+  },
 });
 
 /**
@@ -51,7 +57,7 @@ export async function registerForPush(): Promise<string | null> {
     await api.registerDevice(data, Platform.OS);
     return data;
   } catch (e) {
-    // 404 : la route /api/v1/devices n'existe pas encore côté API.
+    // 404 : API pas encore à jour (route /api/v1/devices absente).
     if (!(e instanceof ApiError && e.status === 404)) console.warn('[push] enregistrement impossible', e);
     return currentToken;
   }

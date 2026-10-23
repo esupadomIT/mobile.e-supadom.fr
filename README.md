@@ -60,14 +60,16 @@ Jeton : `Authorization: Bearer <accessToken>` (jeton NextAuth, équivalent à un
 | GET | `/api/tchat/messages?partnerId=&limit=` | messages d'une discussion (`{ messages, conversationIds, unreadCount, hasMore }`) |
 | POST | `/api/tchat/messages` | envoi `{ receiverId, text }` → `Message` |
 | POST | `/api/tchat/markAsRead` | `{ conversationId }` |
-| POST / DELETE | `/api/v1/devices` | **à créer** : jeton Expo Push (`{ token, platform }`) |
+| POST / DELETE | `/api/v1/devices` | jeton Expo Push (`{ token, platform }`, `DELETE /v1/devices/:token` à la déconnexion) |
 
 Temps réel : en attendant un Socket.IO authentifié côté API, le chat se rafraîchit
 toutes les 5 s (écran de discussion, seulement ses derniers messages) et 15 s (liste, dernier message seulement). Le socket du site n'est pas
 utilisé : il fait confiance au `senderId` envoyé par le client.
 
-Push (à faire côté API) : à chaque message, notification Expo Push à tous les jetons
-du destinataire avec `data: { partnerId: <id de l'expéditeur> }`.
+Push : à chaque message (envoyé depuis l'app ou depuis le site), l'API envoie une
+notification Expo Push à tous les téléphones du destinataire, canal Android
+`messages`, avec `data: { type: 'message', partnerId: <id de l'expéditeur> }`.
+Toucher la notification ouvre la discussion ; pas de bannière si elle est déjà ouverte.
 
 ## Vérifications
 
