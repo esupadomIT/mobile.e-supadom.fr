@@ -60,7 +60,17 @@ export interface Contact extends Partner {
   hasMessage: boolean;
 }
 
-/** GET /api/tchat/conversation */
+/** GET /api/tchat/messages?partnerId= */
+export interface MessagesPage {
+  partnerId: number;
+  conversationIds: number[];
+  /** Du plus récent au plus ancien. */
+  messages: Message[];
+  unreadCount: number;
+  hasMore: boolean;
+}
+
+/** GET /api/tchat/conversation?lite=1 (messages = dernier message seulement) */
 export interface ChatData {
   conversations: Conversation[];
   instructors: Contact[];

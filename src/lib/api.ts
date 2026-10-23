@@ -1,5 +1,5 @@
 import { API_URL } from '@/config';
-import type { ChatData, Message, TokenResponse, User } from '@/types';
+import type { ChatData, Message, MessagesPage, TokenResponse, User } from '@/types';
 
 let authToken: string | null = null;
 let onUnauthorized: (() => void) | null = null;
@@ -62,8 +62,11 @@ export const api = {
     }),
   me: () => request<User>('/v1/auth/me'),
 
-  /** Conversations (messages inclus) + correspondants possibles. */
-  chat: () => request<ChatData>('/tchat/conversation'),
+  /** Conversations (dernier message seulement) + correspondants possibles. */
+  chat: () => request<ChatData>('/tchat/conversation?lite=1'),
+  /** Messages échangés avec un correspondant, du plus récent au plus ancien. */
+  messages: (partnerId: number, limit = 50) =>
+    request<MessagesPage>(`/tchat/messages?partnerId=${partnerId}&limit=${limit}`),
   sendMessage: (receiverId: number, text: string) =>
     request<Message>('/tchat/messages', {
       method: 'POST',

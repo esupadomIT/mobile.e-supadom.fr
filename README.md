@@ -56,13 +56,14 @@ Jeton : `Authorization: Bearer <accessToken>` (jeton NextAuth, équivalent à un
 |---|---|---|
 | POST | `/api/v1/auth/token` | connexion `{ email, password }` → `{ accessToken, user }` |
 | GET | `/api/v1/auth/me` | profil |
-| GET | `/api/tchat/conversation` | `{ conversations, instructors, students }` (messages inclus) |
+| GET | `/api/tchat/conversation?lite=1` | `{ conversations, instructors, students }` (dernier message de chaque conversation) |
+| GET | `/api/tchat/messages?partnerId=&limit=` | messages d'une discussion (`{ messages, conversationIds, unreadCount, hasMore }`) |
 | POST | `/api/tchat/messages` | envoi `{ receiverId, text }` → `Message` |
 | POST | `/api/tchat/markAsRead` | `{ conversationId }` |
 | POST / DELETE | `/api/v1/devices` | **à créer** : jeton Expo Push (`{ token, platform }`) |
 
 Temps réel : en attendant un Socket.IO authentifié côté API, le chat se rafraîchit
-toutes les 5 s (écran de discussion) et 15 s (liste). Le socket du site n'est pas
+toutes les 5 s (écran de discussion, seulement ses derniers messages) et 15 s (liste, dernier message seulement). Le socket du site n'est pas
 utilisé : il fait confiance au `senderId` envoyé par le client.
 
 Push (à faire côté API) : à chaque message, notification Expo Push à tous les jetons

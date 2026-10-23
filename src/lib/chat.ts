@@ -1,13 +1,25 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
-import type { ChatData, Contact, Conversation, Message, User } from '@/types';
+import type { ChatData, Contact, Conversation, Message, MessagesPage, User } from '@/types';
 
 export const CHAT_KEY = ['chat'] as const;
+export const messagesKey = (partnerId: number) => ['messages', partnerId] as const;
 
-/** Conversations + correspondants (GET /api/tchat/conversation). */
+/** Conversations (dernier message) + correspondants (GET /api/tchat/conversation?lite=1). */
 export function useChat(refetchInterval: number | false = false) {
   return useQuery({ queryKey: CHAT_KEY, queryFn: api.chat, refetchInterval });
+}
+
+/** Messages d'une discussion (GET /api/tchat/messages), `limit` derniers. */
+export function useMessages(partnerId: number, limit: number, refetchInterval: number | false = false) {
+  return useQuery({
+    queryKey: [...messagesKey(partnerId), limit],
+    queryFn: () => api.messages(partnerId, limit),
+    refetchInterval,
+    enabled: Number.isFinite(partnerId) && partnerId > 0,
+    placeholderData: (previous) => previous, // pas d'écran vide quand on charge plus d'historique
+  });
 }
 
 /** Conversations triées par dernier message, du plus récent au plus ancien. */
@@ -33,6 +45,16 @@ export function startableContacts(data: ChatData | undefined, user: User | null)
 export function useAppendMessage() {
   const queryClient = useQueryClient();
   return (message: Message, partnerId: number) => {
+    // Discussion ouverte (toutes les tailles de page en cache)
+    queryClient.setQueriesData<MessagesPage>({ queryKey: messagesKey(partnerId) }, (old) => {
+      if (!old || old.messages.some((m) => m.id === message.id)) return old;
+      return {
+        ...old,
+        conversationIds: old.conversationIds.length ? old.conversationIds : [message.conversationId],
+        messages: [message, ...old.messages],
+      };
+    });
+    // Liste des conversations (dernier message seulement)
     queryClient.setQueryData<ChatData>(CHAT_KEY, (old) => {
       if (!old) return old;
       const existing = old.conversations.find((c) => c.partner.id === partnerId);
@@ -40,7 +62,7 @@ export function useAppendMessage() {
         if (existing.messages.some((m) => m.id === message.id)) return old;
         const updated: Conversation = {
           ...existing,
-          messages: [message, ...existing.messages],
+          messages: [message],
           lastMessage: message,
           totalMessages: existing.totalMessages + 1,
         };

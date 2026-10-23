@@ -18,12 +18,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CHAT_POLL_MS } from '@/config';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { CHAT_KEY, useAppendMessage, useChat } from '@/lib/chat';
+import { CHAT_KEY, messagesKey, useAppendMessage, useChat, useMessages } from '@/lib/chat';
 import { fileUrl, formatTime, fullName, messageText } from '@/lib/format';
 import { useColors } from '@/theme';
 import type { Message } from '@/types';
 
 const MAX_LENGTH = 5000;
+const PAGE = 50;
+const MAX_PAGE = 200;
 
 export default function ChatScreen() {
   const { partnerId: partnerParam } = useLocalSearchParams<{ partnerId: string }>();
@@ -33,23 +35,38 @@ export default function ChatScreen() {
   const queryClient = useQueryClient();
   const appendMessage = useAppendMessage();
   const [draft, setDraft] = useState('');
+  const [limit, setLimit] = useState(PAGE);
 
-  const { data, isLoading } = useChat(CHAT_POLL_MS);
+  // Correspondant : liste des conversations (déjà en cache, pas de rafraîchissement ici)
+  const { data } = useChat();
   const conversation = data?.conversations.find((conv) => conv.partner.id === partnerId);
   const partner =
     conversation?.partner ?? [...(data?.instructors ?? []), ...(data?.students ?? [])].find((p) => p.id === partnerId);
-  const messages = conversation?.messages ?? []; // du plus récent au plus ancien
 
-  // Marque la conversation comme lue dès qu'il y a des messages non lus.
-  const unread = conversation?.unreadCount ?? 0;
-  const conversationId = conversation?.id;
+  // Messages : seulement cette discussion, `limit` derniers, rafraîchis toutes les 5 s
+  const { data: page, isLoading } = useMessages(partnerId, limit, CHAT_POLL_MS);
+  const messages = page?.messages ?? []; // du plus récent au plus ancien
+
+  // Marque la discussion comme lue dès qu'il y a des messages non lus.
+  const unread = page?.unreadCount ?? 0;
+  const conversationId = page?.conversationIds[0];
   useEffect(() => {
     if (!conversationId || unread === 0) return;
     api
       .markAsRead(conversationId)
-      .then(() => queryClient.invalidateQueries({ queryKey: CHAT_KEY }))
+      .then(() =>
+        Promise.all([
+          queryClient.invalidateQueries({ queryKey: messagesKey(partnerId) }),
+          queryClient.invalidateQueries({ queryKey: CHAT_KEY }),
+        ]),
+      )
       .catch(() => undefined);
-  }, [conversationId, unread, queryClient]);
+  }, [conversationId, unread, partnerId, queryClient]);
+
+  // Historique plus ancien en remontant (liste inversée : « fin » = haut de l'écran)
+  const loadOlder = () => {
+    if (page?.hasMore && limit < MAX_PAGE) setLimit((l) => Math.min(MAX_PAGE, l + PAGE));
+  };
 
   const send = useMutation({
     mutationFn: (text: string) => api.sendMessage(partnerId, text),
@@ -85,6 +102,8 @@ export default function ChatScreen() {
               </Text>
             }
             renderItem={({ item }) => <Bubble message={item} mine={item.senderId === user?.id} />}
+            onEndReached={loadOlder}
+            onEndReachedThreshold={0.3}
           />
         )}
 
