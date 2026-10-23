@@ -3,7 +3,7 @@
 Application mobile e-supadom (Expo SDK 58, React Native, TypeScript).
 Première fonctionnalité : **chat 1-à-1 prof ↔ élève en temps réel avec notifications push**.
 
-Backend : **`https://admin.mobile.e-supadom.fr`** (API REST + Socket.IO dédiée au mobile).
+Backend : **`https://admin.mobile.e-supadom.fr`** (API NestJS partagée avec le site, routes sous `/api`).
 
 ## Démarrer
 
@@ -31,45 +31,42 @@ Pour iOS, il faut un compte Apple Developer (clé APNs gérée par `eas credenti
 
 ```
 src/
-  app/                       routes Expo Router
-    _layout.tsx              providers, ouverture d'une conversation au toucher d'une notification
-    index.tsx                redirection selon la session
-    login.tsx                connexion
-    (app)/_layout.tsx        zone protégée + écoute Socket.IO
-    (app)/conversations.tsx  liste des conversations (non lus, dernier message)
-    (app)/chat/[id].tsx      écran de discussion
+  app/                          routes Expo Router
+    _layout.tsx                 providers, ouverture d'une conversation au toucher d'une notification
+    index.tsx                   redirection selon la session
+    login.tsx                   connexion
+    (app)/_layout.tsx           zone protégée
+    (app)/conversations.tsx     conversations (non lus, dernier message) + profs / élèves à qui écrire
+    (app)/chat/[partnerId].tsx  discussion avec un correspondant
+  components/Avatar.tsx
   lib/
-    api.ts                   client REST (token Bearer)
-    auth.tsx                 session (token dans expo-secure-store)
-    socket.ts                connexion Socket.IO
-    push.ts                  permissions + token Expo Push + enregistrement
-  config.ts                  URL de l'API
-  types.ts                   modèles partagés avec le backend
+    api.ts                      client REST (jeton Bearer, préfixe /api)
+    auth.tsx                    session (jeton dans expo-secure-store)
+    chat.ts                     requête du chat (react-query) et helpers
+    push.ts                     permissions + jeton Expo Push + enregistrement
+  config.ts                     URL de l'API, rafraîchissement
+  types.ts                      modèles renvoyés par l'API
 ```
 
-## Contrat attendu de l'API `admin.mobile.e-supadom.fr`
+## Routes utilisées (API `admin.mobile.e-supadom.fr`)
 
-Authentification : `Authorization: Bearer <token>` sur toutes les routes sauf `/auth/login`.
+Jeton : `Authorization: Bearer <accessToken>` (jeton NextAuth, équivalent à une session du site, 30 jours).
 
-| Méthode | Route | Corps / réponse |
+| Méthode | Route | Usage |
 |---|---|---|
-| POST | `/auth/login` | `{ email, password }` → `{ token, user }` |
-| GET | `/me` | → `User` |
-| GET | `/conversations` | → `Conversation[]` (triées par `updatedAt` desc) |
-| GET | `/conversations/:id/messages?before=<ISO>` | → `Message[]` (ordre chronologique, pagination par `before`) |
-| POST | `/conversations/:id/messages` | `{ content }` → `Message` |
-| POST | `/conversations/:id/read` | → 204 |
-| POST | `/devices` | `{ token, platform }` → 204 (token Expo Push) |
-| DELETE | `/devices/:token` | → 204 |
+| POST | `/api/v1/auth/token` | connexion `{ email, password }` → `{ accessToken, user }` |
+| GET | `/api/v1/auth/me` | profil |
+| GET | `/api/tchat/conversation` | `{ conversations, instructors, students }` (messages inclus) |
+| POST | `/api/tchat/messages` | envoi `{ receiverId, text }` → `Message` |
+| POST | `/api/tchat/markAsRead` | `{ conversationId }` |
+| POST / DELETE | `/api/v1/devices` | **à créer** : jeton Expo Push (`{ token, platform }`) |
 
-Socket.IO (même hôte) : handshake `auth: { token }`. Le serveur émet
-`message:new` (payload `Message`) à chaque participant connecté.
+Temps réel : en attendant un Socket.IO authentifié côté API, le chat se rafraîchit
+toutes les 5 s (écran de discussion) et 15 s (liste). Le socket du site n'est pas
+utilisé : il fait confiance au `senderId` envoyé par le client.
 
-Push : quand un message est créé, le backend envoie une notification via l'API Expo Push
-à tous les `DeviceToken` du destinataire, avec `data: { conversationId }` pour que le
-toucher ouvre la bonne conversation.
-
-Modèles : voir `src/types.ts` (`User`, `Conversation`, `Message`).
+Push (à faire côté API) : à chaque message, notification Expo Push à tous les jetons
+du destinataire avec `data: { partnerId: <id de l'expéditeur> }`.
 
 ## Vérifications
 

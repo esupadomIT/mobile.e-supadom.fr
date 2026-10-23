@@ -1,34 +1,76 @@
-// Contrat de données attendu de l'API admin.mobile.e-supadom.fr (voir README).
+// Modèles renvoyés par l'API admin.mobile.e-supadom.fr (schéma Prisma partagé).
 
-export type Role = 'ELEVE' | 'PROF' | 'ADMIN';
+export type Role = 'STUDENT' | 'INSTRUCTOR' | 'ADMIN' | 'COMMERCIAL' | 'CM' | 'USER';
 
+/** GET /api/v1/auth/me */
 export interface User {
-  id: string;
+  id: number;
+  email: string;
   firstName: string;
   lastName: string;
-  email: string;
   role: Role;
-  avatarUrl?: string | null;
+  status?: string;
+  profilePicture?: string | null;
+}
+
+/** Correspondant dans le chat (jamais l'objet User complet). */
+export interface Partner {
+  id: number;
+  firstName: string;
+  lastName: string;
+  role: Role;
+  gender?: string | null;
+  reference?: string | null;
+  profilePicture?: string | null;
+}
+
+export interface Attachment {
+  id: number;
+  fileUrl: string;
+  fileType: string;
+  fileName?: string | null;
 }
 
 export interface Message {
-  id: string;
-  conversationId: string;
-  senderId: string;
-  content: string;
+  id: number;
+  text: string | null;
+  isHtml: boolean;
   createdAt: string; // ISO 8601
-  readAt?: string | null;
+  senderId: number;
+  receiverId: number;
+  conversationId: number;
+  isRead: boolean;
+  attachments?: Attachment[];
 }
 
 export interface Conversation {
-  id: string;
-  otherUser: Pick<User, 'id' | 'firstName' | 'lastName' | 'role' | 'avatarUrl'>;
-  lastMessage?: Message | null;
+  id: number;
+  partner: Partner;
+  lastMessage: Message | null;
   unreadCount: number;
-  updatedAt: string;
+  totalMessages: number;
+  /** Du plus récent au plus ancien. */
+  messages: Message[];
+  conversationIds: number[];
 }
 
-export interface LoginResponse {
-  token: string;
+/** Correspondant possible sans conversation (profs d'un élève, élèves d'un prof). */
+export interface Contact extends Partner {
+  hasSeance: boolean;
+  hasMessage: boolean;
+}
+
+/** GET /api/tchat/conversation */
+export interface ChatData {
+  conversations: Conversation[];
+  instructors: Contact[];
+  students: Contact[];
+}
+
+/** POST /api/v1/auth/token */
+export interface TokenResponse {
+  accessToken: string;
+  tokenType: 'Bearer';
+  expiresIn: number;
   user: User;
 }

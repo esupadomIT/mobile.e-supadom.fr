@@ -3,7 +3,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 
 let currentToken: string | null = null;
 
@@ -51,12 +51,14 @@ export async function registerForPush(): Promise<string | null> {
     await api.registerDevice(data, Platform.OS);
     return data;
   } catch (e) {
-    console.warn('[push] enregistrement impossible', e);
-    return null;
+    // 404 : la route /api/v1/devices n'existe pas encore côté API.
+    if (!(e instanceof ApiError && e.status === 404)) console.warn('[push] enregistrement impossible', e);
+    return currentToken;
   }
 }
 
 export async function unregisterPush() {
-  if (currentToken) await api.unregisterDevice(currentToken);
+  const token = currentToken;
   currentToken = null;
+  if (token) await api.unregisterDevice(token);
 }

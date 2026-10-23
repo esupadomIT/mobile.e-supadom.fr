@@ -3,10 +3,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 import { api, setAuthToken, setUnauthorizedHandler } from '@/lib/api';
 import { registerForPush, unregisterPush } from '@/lib/push';
-import { disconnectSocket } from '@/lib/socket';
 import type { User } from '@/types';
 
-const TOKEN_KEY = 'esupadom.authToken';
+const TOKEN_KEY = 'esupadom.accessToken';
 
 type AuthState = {
   user: User | null;
@@ -27,11 +26,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthToken(null);
     setToken(null);
     setUser(null);
-    disconnectSocket();
     await SecureStore.deleteItemAsync(TOKEN_KEY);
   }, []);
 
-  // Restaure la session au démarrage.
+  // Restaure la session au démarrage (jeton valable 30 jours, comme une session du site).
   useEffect(() => {
     setUnauthorizedHandler(() => void clearSession());
     (async () => {
@@ -54,10 +52,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const res = await api.login(email, password);
-    setAuthToken(res.token);
-    await SecureStore.setItemAsync(TOKEN_KEY, res.token);
+    setAuthToken(res.accessToken);
+    await SecureStore.setItemAsync(TOKEN_KEY, res.accessToken);
     setUser(res.user);
-    setToken(res.token);
+    setToken(res.accessToken);
     void registerForPush();
   }, []);
 
