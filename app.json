@@ -33,14 +33,24 @@
         }
       ]
     ],
-    "scheme": "esupadom",
+    "scheme": [
+      "esupadom",
+      "fr.esupadom.mobile",
+      "com.googleusercontent.apps.942090691352-7hbssp31r0b9e3f7ec72ahoj91c653df"
+    ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
       "eas": {
-        "projectId": "REMPLACER_PAR_EAS_PROJECT_ID"
+        "projectId": "5fadb1b7-0275-4a6a-aefe-b5943a5b98c5"
       }
-    }
+    },
+    "owner": "guetat"
   }
 }
