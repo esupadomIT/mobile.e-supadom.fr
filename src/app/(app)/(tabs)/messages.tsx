@@ -1,8 +1,7 @@
-import { router, Stack } from 'expo-router';
+import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   ScrollView,
@@ -13,6 +12,7 @@ import {
 } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { LIST_POLL_MS } from '@/config';
 import { useAuth } from '@/lib/auth';
 import { sortedConversations, startableContacts, useChat } from '@/lib/chat';
@@ -27,7 +27,7 @@ const matches = (p: { firstName: string; lastName: string }, q: string) =>
   !q || fullName(p).toLowerCase().includes(q.trim().toLowerCase());
 
 export default function ConversationsScreen() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const c = useColors();
   const { data, isLoading, isError, refetch, isRefetching } = useChat(LIST_POLL_MS);
   const [query, setQuery] = useState('');
@@ -40,27 +40,8 @@ export default function ConversationsScreen() {
   const isStudent = user?.role === 'STUDENT';
   const totalUnread = conversations.reduce((n, conv) => n + conv.unreadCount, 0);
 
-  const confirmSignOut = () =>
-    Alert.alert('Se déconnecter ?', 'Tu ne recevras plus les notifications sur ce téléphone.', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Se déconnecter', style: 'destructive', onPress: () => void signOut() },
-    ]);
-
   const header = (
     <View style={styles.headerBlock}>
-      <View style={[styles.search, { backgroundColor: c.surfaceAlt }]}>
-        <Text style={{ color: c.subtle, fontSize: 16 }}>⌕</Text>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder={isStudent ? 'Rechercher un prof' : 'Rechercher un élève'}
-          placeholderTextColor={c.subtle}
-          style={[styles.searchInput, { color: c.text }]}
-          autoCorrect={false}
-          clearButtonMode="while-editing"
-        />
-      </View>
-
       {contacts.length > 0 && (
         <View style={styles.contactsBlock}>
           <Text style={[styles.sectionTitle, { color: c.muted }]}>
@@ -77,8 +58,8 @@ export default function ConversationsScreen() {
       <View style={styles.listTitleRow}>
         <Text style={[styles.sectionTitle, { color: c.muted }]}>Conversations</Text>
         {totalUnread > 0 && (
-          <View style={[styles.badge, { backgroundColor: c.primary }]}>
-            <Text style={styles.badgeText}>{totalUnread} non lu{totalUnread > 1 ? 's' : ''}</Text>
+          <View style={[styles.badge, { backgroundColor: c.accent }]}>
+            <Text style={[styles.badgeText, { color: c.onAccent }]}>{totalUnread} non lu{totalUnread > 1 ? 's' : ''}</Text>
           </View>
         )}
       </View>
@@ -86,22 +67,24 @@ export default function ConversationsScreen() {
   );
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: 'Messages',
-          headerLargeTitle: true,
-          headerShadowVisible: false,
-          headerLargeTitleShadowVisible: false,
-          headerStyle: { backgroundColor: c.bg },
-          headerRight: () =>
-            user ? (
-              <Pressable onPress={confirmSignOut} hitSlop={8} accessibilityLabel="Mon compte, se déconnecter">
-                <Avatar person={{ id: user.id, firstName: user.firstName, lastName: user.lastName, role: user.role, profilePicture: user.profilePicture }} size={34} />
-              </Pressable>
-            ) : null,
-        }}
-      />
+    <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <ScreenHeader
+        title="Messages"
+        subtitle={totalUnread > 0 ? `${totalUnread} message${totalUnread > 1 ? 's' : ''} non lu${totalUnread > 1 ? 's' : ''}` : 'Tes échanges'}
+      >
+        <View style={[styles.search, { backgroundColor: '#FFFFFF' }]}>
+          <Text style={{ color: c.muted, fontSize: 16 }}>⌕</Text>
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder={isStudent ? 'Rechercher un prof' : 'Rechercher un élève'}
+            placeholderTextColor={c.muted}
+            style={[styles.searchInput, { color: '#1B2433' }]}
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+          />
+        </View>
+      </ScreenHeader>
 
       {isLoading ? (
         <ActivityIndicator style={styles.center} color={c.primary} />
@@ -114,8 +97,7 @@ export default function ConversationsScreen() {
         <FlatList
           data={conversations}
           keyExtractor={(conv) => String(conv.id)}
-          contentInsetAdjustmentBehavior="automatic"
-          refreshing={isRefetching}
+                    refreshing={isRefetching}
           onRefresh={refetch}
           ListHeaderComponent={header}
           contentContainerStyle={styles.listContent}
@@ -142,7 +124,7 @@ export default function ConversationsScreen() {
           )}
         />
       )}
-    </>
+    </View>
   );
 }
 
@@ -210,7 +192,9 @@ function ContactChip({ contact }: { contact: Contact }) {
       <Text style={[styles.chipName, { color: c.text }]} numberOfLines={1}>
         {contact.firstName}
       </Text>
-      <Text style={{ color: c.primary, fontSize: 12, fontWeight: '700' }}>Écrire</Text>
+      <View style={[styles.write, { backgroundColor: c.accentSoft }]}>
+        <Text style={{ color: c.onAccent, fontSize: 12, fontWeight: '700' }}>Écrire</Text>
+      </View>
     </Pressable>
   );
 }
@@ -218,12 +202,13 @@ function ContactChip({ contact }: { contact: Contact }) {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 6 },
   listContent: { paddingHorizontal: 16, paddingBottom: 32 },
-  headerBlock: { gap: 18, paddingTop: 4, paddingBottom: 10 },
+  headerBlock: { gap: 18, paddingTop: 18, paddingBottom: 10 },
   search: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.md, paddingHorizontal: 12 },
   searchInput: { flex: 1, paddingVertical: 11, fontSize: 16 },
   contactsBlock: { gap: 10 },
   contacts: { gap: 10, paddingRight: 8 },
   chip: { width: 92, alignItems: 'center', gap: 6, paddingVertical: 12, borderRadius: radius.lg },
+  write: { borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3 },
   chipName: { fontSize: 13, fontWeight: '600', maxWidth: 80 },
   listTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },

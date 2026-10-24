@@ -11,6 +11,27 @@ export interface User {
   role: Role;
   status?: string;
   profilePicture?: string | null;
+  // Renseignés par GET /api/v1/auth/me
+  gender?: string | null;
+  phone?: string | null;
+  city?: string | null;
+  reference?: string | null;
+  forfait?: string | null;
+  /** Solde en heures (élève) */
+  totalHours?: number | null;
+  userClasses?: { classe: { id: number; nom: string; niveau?: { id: number; nom: string } } }[];
+}
+
+/** Séance (GET /api/seance/getAllSeancesStudentById | getAllSeancesInstructorById), normalisée par l'app. */
+export interface Seance {
+  id: number;
+  start: string; // ISO 8601
+  end: string | null;
+  subject: string;
+  meetLink: string | null;
+  /** Prof (vue élève) ou élèves (vue prof) */
+  withWhom: string;
+  partnerId: number | null;
 }
 
 /** Correspondant dans le chat (jamais l'objet User complet). */

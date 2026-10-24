@@ -45,7 +45,7 @@ export default function LoginScreen() {
     [signInWithGoogle],
   );
 
-  if (token) return <Redirect href="/conversations" />;
+  if (token) return <Redirect href="/accueil" />;
 
   const onSubmit = async () => {
     if (!email.trim() || !password) return setError('Saisis ton adresse e-mail et ton mot de passe.');

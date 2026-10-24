@@ -71,6 +71,23 @@ export function PrimaryButton({ title, onPress, loading, disabled }: { title: st
   );
 }
 
+/** Bouton d'action jaune du site (« Nous découvrir ») : rejoindre une séance, etc. */
+export function YellowButton({ title, onPress, small }: { title: string; onPress: () => void; small?: boolean }) {
+  const c = useColors();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.button,
+        small && styles.small,
+        { backgroundColor: pressed ? c.yellowPressed : c.yellow, borderRadius: radius.pill },
+      ]}
+    >
+      <Text style={[styles.buttonText, small && { fontSize: 14 }, { color: c.onYellow }]}>{title}</Text>
+    </Pressable>
+  );
+}
+
 export function SecondaryButton({ title, onPress, icon, loading, disabled }: { title: string; onPress: () => void; icon?: ReactNode; loading?: boolean; disabled?: boolean }) {
   const c = useColors();
   return (
@@ -124,6 +141,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, paddingVertical: 14, fontSize: 16 },
   button: { height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 },
   secondary: { borderWidth: 1.5 },
+  small: { height: 40, paddingHorizontal: 18 },
   buttonText: { fontSize: 16, fontWeight: '700' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 4 },
   line: { flex: 1, height: StyleSheet.hairlineWidth * 2 },

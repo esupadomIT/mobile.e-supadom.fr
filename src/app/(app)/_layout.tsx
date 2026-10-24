@@ -17,7 +17,10 @@ export default function AppLayout() {
         headerStyle: { backgroundColor: c.surface },
         headerTintColor: c.text,
         contentStyle: { backgroundColor: c.bg },
+        headerBackTitle: 'Retour',
       }}
-    />
+    >
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    </Stack>
   );
 }

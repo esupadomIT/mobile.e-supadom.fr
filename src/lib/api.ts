@@ -1,5 +1,5 @@
 import { API_URL } from '@/config';
-import type { ChatData, Message, MessagesPage, TokenResponse, User } from '@/types';
+import type { ChatData, Message, MessagesPage, Seance, TokenResponse, User } from '@/types';
 
 let authToken: string | null = null;
 let onUnauthorized: (() => void) | null = null;
@@ -67,6 +67,36 @@ export const api = {
   forgotPassword: (email: string) =>
     request<{ message: string }>('/v1/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
   me: () => request<User>('/v1/auth/me'),
+
+  /** Séances de l'élève ou du prof entre deux dates (annulées exclues). */
+  seances: async (user: User, from: Date, to: Date): Promise<Seance[]> => {
+    const range = `startDate=${encodeURIComponent(from.toISOString())}&endDate=${encodeURIComponent(to.toISOString())}`;
+    const common = `noPagination=true&excludeCancelled=true&${range}`;
+    const instructor = user.role === 'INSTRUCTOR';
+    const res = await request<{ data: any[] }>(
+      instructor
+        ? `/seance/getAllSeancesInstructorById?instructorId=${user.id}&${common}`
+        : `/seance/getAllSeancesStudentById?studentId=${user.id}&${common}`,
+    );
+    const link = (l: unknown) => (typeof l === 'string' && /^https?:\/\//.test(l) ? l : null);
+    return (res.data ?? [])
+      .filter((s) => s.status !== 'CANCELLED')
+      .map((s): Seance => {
+        const students = (s.students ?? []) as { id: number; firstName?: string; lastName?: string }[];
+        return {
+          id: s.id,
+          start: s.dateTime ?? s.date,
+          end: s.endDate ?? null,
+          subject: s.subject ?? s.matiere ?? 'Séance',
+          meetLink: link(s.google_meet_link),
+          withWhom: instructor
+            ? students.map((st) => `${st.firstName ?? ''} ${st.lastName ? `${st.lastName[0]}.` : ''}`.trim()).join(', ') || 'Élève'
+            : s.instructor?.fullName ?? `${s.instructor?.firstName ?? ''} ${s.instructor?.lastName ?? ''}`.trim(),
+          partnerId: instructor ? (students.length === 1 ? students[0].id : null) : s.instructor?.id ?? null,
+        };
+      })
+      .sort((a, b) => +new Date(a.start) - +new Date(b.start));
+  },
 
   /** Conversations (dernier message seulement) + correspondants possibles. */
   chat: () => request<ChatData>('/tchat/conversation?lite=1'),

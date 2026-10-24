@@ -1,6 +1,7 @@
 import { useColorScheme } from 'react-native';
 
-// Palette e-Supadom (site : bleu #2864FF, vert d'eau #6EE7B7, encre #263546).
+// Palette du site e-supadom.fr : BLEU #2F80ED (bandeau, liens), VERT #6EE7B7
+// (« Inscription », mots mis en avant), JAUNE #FFD814 (boutons d'action « Nous découvrir »).
 const light = {
   bg: '#F4F6FB',
   surface: '#FFFFFF',
@@ -9,12 +10,17 @@ const light = {
   muted: '#6A7C92',
   subtle: '#97A3B6',
   border: '#E3E8F0',
-  primary: '#2864FF',
-  primaryPressed: '#1F4FD1',
-  primarySoft: '#E7F0FF',
+  primary: '#2F80ED',
+  primaryPressed: '#2468C4',
+  primarySoft: '#E7F1FF',
   onPrimary: '#FFFFFF',
   accent: '#6EE7B7',
-  bubbleMine: '#2864FF',
+  accentSoft: '#E3FBF2',
+  onAccent: '#0B3B2C',
+  yellow: '#FFD814',
+  yellowPressed: '#F0C800',
+  onYellow: '#1B2433',
+  bubbleMine: '#2F80ED',
   bubbleOther: '#FFFFFF',
   danger: '#D92D20',
   dangerSoft: '#FEF0EF',
@@ -29,12 +35,17 @@ const dark: typeof light = {
   muted: '#9AA7B8',
   subtle: '#6B7789',
   border: '#262E3B',
-  primary: '#5B8CFF',
-  primaryPressed: '#4A78E6',
-  primarySoft: '#1B2A4A',
+  primary: '#4D94F5',
+  primaryPressed: '#3A7FDE',
+  primarySoft: '#16294A',
   onPrimary: '#FFFFFF',
-  accent: '#4FD1A0',
-  bubbleMine: '#3B6EF5',
+  accent: '#6EE7B7',
+  accentSoft: '#123A2E',
+  onAccent: '#0B3B2C',
+  yellow: '#FFD814',
+  yellowPressed: '#F0C800',
+  onYellow: '#1B2433',
+  bubbleMine: '#2F80ED',
   bubbleOther: '#1F2633',
   danger: '#F97066',
   dangerSoft: '#3A1D1B',
@@ -48,7 +59,7 @@ export function useColors(): Colors {
 }
 
 /** Couleurs d'avatar (initiales), choisies de façon stable à partir de l'id. */
-export const AVATAR_COLORS = ['#2864FF', '#0EA5A4', '#7C5CFF', '#F97316', '#E11D74', '#16A34A', '#0284C7', '#B45309'];
+export const AVATAR_COLORS = ['#2F80ED', '#0EA5A4', '#7C5CFF', '#F97316', '#E11D74', '#16A34A', '#0284C7', '#B45309'];
 
 export const radius = { sm: 10, md: 14, lg: 20, pill: 999 };
 

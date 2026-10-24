@@ -14,5 +14,5 @@ export default function Index() {
     );
   }
 
-  return <Redirect href={token ? '/conversations' : '/login'} />;
+  return <Redirect href={token ? '/accueil' : '/login'} />;
 }
