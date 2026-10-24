@@ -11,7 +11,7 @@ const icon = (on: IconName, off: IconName) =>
     return <Ionicons name={focused ? on : off} size={size} color={color as string} />;
   };
 
-/** Onglets : Accueil, Messages (badge non lus), Profil. */
+/** Onglets : Accueil, Messages (badge non lus), Disponibilités, Profil. */
 export default function TabsLayout() {
   const c = useColors();
   const { data } = useChat();
@@ -38,6 +38,7 @@ export default function TabsLayout() {
           tabBarBadgeStyle: { backgroundColor: c.accent, color: c.onAccent, fontWeight: '700' },
         }}
       />
+      <Tabs.Screen name="dispos" options={{ title: 'Dispos', tabBarIcon: icon('calendar', 'calendar-outline') }} />
       <Tabs.Screen name="profil" options={{ title: 'Profil', tabBarIcon: icon('person-circle', 'person-circle-outline') }} />
     </Tabs>
   );

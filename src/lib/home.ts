@@ -4,6 +4,12 @@ import { api } from '@/lib/api';
 import type { User } from '@/types';
 
 export const ME_KEY = ['me'] as const;
+export const FULL_USER_KEY = ['full-user'] as const;
+
+/** Profil détaillé (matières, frais d'inscription, zone scolaire…) : édition du profil, recharge. */
+export function useFullUser(enabled = true) {
+  return useQuery({ queryKey: FULL_USER_KEY, queryFn: api.fullUser, enabled, staleTime: 30_000 });
+}
 
 /** Profil complet (solde d'heures, classes, référence…). */
 export function useMe(enabled = true) {

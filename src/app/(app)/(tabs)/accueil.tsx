@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -88,6 +89,23 @@ export default function HomeScreen() {
               </ScrollView>
             </Section>
           )}
+
+          {/* Raccourci : recharge (élève) ou disponibilités (prof) */}
+          <Pressable
+            onPress={() => router.push(isStudent ? '/recharge' : '/dispos')}
+            style={({ pressed }) => [styles.card, shadow, styles.quick, { backgroundColor: pressed ? c.surfaceAlt : c.surface }]}
+          >
+            <View style={[styles.quickIcon, { backgroundColor: isStudent ? c.yellow : c.accentSoft }]}>
+              <Ionicons name={isStudent ? 'card' : 'calendar'} size={22} color={isStudent ? c.onYellow : c.onAccent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.msgName, { color: c.text }]}>{isStudent ? 'Recharger mon compte' : 'Mes disponibilités'}</Text>
+              <Text style={{ color: c.muted }} numberOfLines={2}>
+                {isStudent ? 'Choisissez une formule et payez en ligne (PayPal ou Alma).' : 'Ajoutez vos créneaux pour les prochaines semaines.'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={c.subtle} />
+          </Pressable>
 
           {/* Derniers messages */}
           <Section title="Derniers messages" action={{ label: 'Tout voir', onPress: () => router.push('/messages') }}>
@@ -219,6 +237,8 @@ function SeanceCard({ seance }: { seance: Seance }) {
 }
 
 const styles = StyleSheet.create({
+  quick: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  quickIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   content: { paddingBottom: 32 },
   logo: { width: 92, height: 44, backgroundColor: '#fff', borderRadius: 12 },
   stats: { flexDirection: 'row', gap: 10 },

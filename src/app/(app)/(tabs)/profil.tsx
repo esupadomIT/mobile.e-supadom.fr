@@ -5,10 +5,10 @@ import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'r
 
 import { Avatar } from '@/components/Avatar';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { SITE_URL } from '@/config';
+import { YellowButton } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { roleLabel } from '@/lib/format';
-import { useMe } from '@/lib/home';
+import { useFullUser, useMe } from '@/lib/home';
 import { radius, shadow, useColors } from '@/theme';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -20,10 +20,15 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const c = useColors();
   const { data: me } = useMe();
+  const { data: full } = useFullUser();
   const person = me ?? user;
   if (!person) return null;
 
+  const isInstructor = person.role === 'INSTRUCTOR';
+  const isStudent = person.role === 'STUDENT' || person.role === 'USER';
   const classes = (me?.userClasses ?? []).map((uc) => uc.classe.nom).filter(Boolean).join(', ');
+  const matieres = [...new Set((full?.matieres ?? []).map((m) => m.matiere.nom))].join(', ');
+  const hours = typeof me?.totalHours === 'number' ? me.totalHours : null;
 
   const confirmSignOut = () =>
     Alert.alert('Se déconnecter ?', 'Tu ne recevras plus les notifications sur ce téléphone.', [
@@ -54,23 +59,42 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          {isStudent ? (
+            <View style={[styles.card, shadow, styles.balance, { backgroundColor: c.primary }]}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ color: 'rgba(255,255,255,0.85)', fontWeight: '600' }}>Mon solde</Text>
+                <Text style={{ color: '#fff', fontSize: 28, fontWeight: '800' }}>
+                  {hours !== null ? `${hours.toFixed(1).replace('.', ',').replace(',0', '')} h` : '—'}
+                </Text>
+                <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>de cours disponibles</Text>
+              </View>
+              <YellowButton title="Recharger" small onPress={() => router.push('/recharge')} />
+            </View>
+          ) : null}
+
+          {isInstructor ? (
+            <Group title="Mon enseignement">
+              <InfoRow icon="school-outline" label="Classes" value={classes || 'Aucune classe'} multiline />
+              <InfoRow icon="book-outline" label="Matières" value={matieres || 'Aucune matière'} multiline />
+            </Group>
+          ) : null}
+
           <Group title="Mes informations">
             <InfoRow icon="mail-outline" label="E-mail" value={person.email} />
             {me?.phone ? <InfoRow icon="call-outline" label="Téléphone" value={me.phone} /> : null}
             {me?.city ? <InfoRow icon="location-outline" label="Ville" value={me.city} /> : null}
-            {classes ? <InfoRow icon="school-outline" label="Classe" value={classes} /> : null}
-            {person.role === 'STUDENT' && typeof me?.totalHours === 'number' ? (
-              <InfoRow icon="time-outline" label="Solde" value={`${me.totalHours.toFixed(1).replace('.', ',')} h`} />
-            ) : null}
+            {isStudent && classes ? <InfoRow icon="school-outline" label="Classe" value={classes} /> : null}
+            {isStudent && matieres ? <InfoRow icon="book-outline" label="Matières" value={matieres} multiline /> : null}
           </Group>
 
           <Group title="Compte">
-            <LinkRow icon="create-outline" label="Modifier mon profil sur le site" onPress={() => Linking.openURL(SITE_URL)} />
+            <LinkRow icon="create-outline" label="Modifier mon profil" onPress={() => router.push('/profil-modifier')} />
             <LinkRow
-              icon="key-outline"
-              label="Changer de mot de passe"
-              onPress={() => router.push({ pathname: '/forgot-password', params: { email: person.email } })}
+              icon="calendar-outline"
+              label={isInstructor ? 'Mes disponibilités' : 'Mes disponibilités de la semaine'}
+              onPress={() => router.push('/dispos')}
             />
+            {isStudent ? <LinkRow icon="card-outline" label="Recharger mon compte" onPress={() => router.push('/recharge')} /> : null}
           </Group>
 
           <Group title="Aide">
@@ -103,7 +127,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function InfoRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+function InfoRow({ icon, label, value, multiline }: { icon: IconName; label: string; value: string; multiline?: boolean }) {
   const c = useColors();
   return (
     <View style={styles.row}>
@@ -112,7 +136,7 @@ function InfoRow({ icon, label, value }: { icon: IconName; label: string; value:
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ color: c.muted, fontSize: 12 }}>{label}</Text>
-        <Text style={{ color: c.text, fontSize: 15, fontWeight: '600' }} numberOfLines={1}>
+        <Text style={{ color: c.text, fontSize: 15, fontWeight: '600', lineHeight: 20 }} numberOfLines={multiline ? 4 : 1}>
           {value}
         </Text>
       </View>
@@ -137,6 +161,7 @@ const styles = StyleSheet.create({
   body: { padding: 16, gap: 20, marginTop: -8 },
   card: { borderRadius: radius.lg, padding: 16 },
   identity: { alignItems: 'center', gap: 8 },
+  balance: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   name: { fontSize: 20, fontWeight: '800' },
   badges: { flexDirection: 'row', gap: 8 },
   badge: { borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 },

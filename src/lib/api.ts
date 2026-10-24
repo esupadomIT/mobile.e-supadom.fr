@@ -1,5 +1,18 @@
 import { API_URL } from '@/config';
-import type { ChatData, Message, MessagesPage, Seance, TokenResponse, User } from '@/types';
+import type { Forfait, Parametre, SchoolHoliday, Stage, TypeCours } from '@/lib/pricing';
+import type {
+  ChatData,
+  Disponibilite,
+  FullUser,
+  Message,
+  MessagesPage,
+  Partner,
+  Seance,
+  StudentAvailability,
+  TokenResponse,
+  User,
+  WeeklySlots,
+} from '@/types';
 
 let authToken: string | null = null;
 let onUnauthorized: (() => void) | null = null;
@@ -119,4 +132,86 @@ export const api = {
     request<void>('/v1/devices', { method: 'POST', body: JSON.stringify({ token, platform }) }),
   unregisterDevice: (token: string) =>
     request<void>(`/v1/devices/${encodeURIComponent(token)}`, { method: 'DELETE' }),
+  // ─── Profil ──────────────────────────────────────────────────────────────
+
+  /** Profil complet (matières, frais d'inscription, zone scolaire…). */
+  fullUser: async () => (await request<{ user: FullUser }>('/auth/user')).user,
+  updateProfile: (body: Record<string, unknown>) =>
+    request<{ message: string; user: FullUser }>('/auth/update-profile', { method: 'POST', body: JSON.stringify(body) }),
+  updateProfileInstructor: (body: Record<string, unknown>) =>
+    request<{ message: string }>('/auth/update-profile-instructor', { method: 'POST', body: JSON.stringify(body) }),
+  updatePassword: (body: { id: number; currentPassword?: string; newPassword: string; confirmNewPassword: string }) =>
+    request<{ message: string }>('/auth/update-password', { method: 'POST', body: JSON.stringify(body) }),
+  classes: () => request<{ id: number; nom: string; niveau?: { id: number; nom: string } }[]>('/niveau/classes'),
+  matieresOfClasse: (classeId: number) =>
+    request<{ id: number; nom: string }[]>('/niveau/matieres', { method: 'POST', body: JSON.stringify({ classeId }) }),
+  /** Ville d'un code postal (null si inconnu). */
+  cityOf: async (postalCode: string) => {
+    try {
+      return (await request<{ city?: string }>(`/geo?postalCode=${encodeURIComponent(postalCode)}`)).city ?? null;
+    } catch {
+      return null;
+    }
+  },
+  /** Matières de la classe de l'élève, hors celles déjà dans son profil. */
+  availableMatieres: (classeId: number, excludeMatiereIds: (string | number)[]) =>
+    request<{ id: number; nom: string }[]>('/niveau/excludeMatiereIds', {
+      method: 'POST',
+      body: JSON.stringify({ classeId, excludeMatiereIds }),
+    }),
+  /** Ajoute des matières (par nom) au profil de l'élève. */
+  addMatieres: (id: number, names: string[]) =>
+    request<{ message: string; user: { id: number; matieres: { id: number; nom: string }[] } }>('/auth/update-matiere', {
+      method: 'POST',
+      body: JSON.stringify({ id, matieres: names }),
+    }),
+
+  // ─── Disponibilités ──────────────────────────────────────────────────────
+
+  disponibilites: (userId: number) => request<Disponibilite[]>(`/disponibilites?userId=${userId}`),
+  addDisponibilite: (startDate: string, endDate: string, isAvailable: boolean) =>
+    request<Disponibilite>('/disponibilites', { method: 'POST', body: JSON.stringify({ startDate, endDate, isAvailable }) }),
+  deleteDisponibilite: (id: number) => request<{ ok: true }>(`/disponibilites/${id}`, { method: 'DELETE' }),
+  studentAvailability: () => request<StudentAvailability>('/student-availability'),
+  saveStudentAvailability: (slots: WeeklySlots) =>
+    request<{ success: boolean; generatedCount: number }>('/student-availability', { method: 'POST', body: JSON.stringify({ slots }) }),
+
+  // ─── Recharge du compte (formules) ───────────────────────────────────────
+
+  formule: async (classe: { id: number }) => {
+    const res = await request<{
+      success: boolean;
+      data: { forfaits: { items: Forfait[] }; typesCours: { items: TypeCours[] }; parametres: { items: Parametre[] }; stages: { items: Stage[] } };
+    }>('/formule', { method: 'POST', body: JSON.stringify({ userClasse: classe }) });
+    return {
+      forfaits: res.data?.forfaits?.items ?? [],
+      typesCours: res.data?.typesCours?.items ?? [],
+      parametres: res.data?.parametres?.items ?? [],
+      stages: res.data?.stages?.items ?? [],
+    };
+  },
+  schoolZone: async (postalCode: string) =>
+    (await request<{ zone: string | null }>(`/school-zone?postalCode=${encodeURIComponent(postalCode)}`)).zone,
+  schoolHolidays: async (zone: string, start: Date, end: Date) => {
+    const day = (d: Date) => d.toISOString().split('T')[0];
+    const res = await request<{ results: SchoolHoliday[] }>(
+      `/school-holidays?start=${day(start)}&end=${day(end)}&zone=${encodeURIComponent(zone)}`,
+    );
+    return res.results ?? [];
+  },
+  /** Commande PayPal ; `approveUrl` s'ouvre dans le navigateur intégré. */
+  createPaypalOrder: (body: Record<string, unknown>) =>
+    request<{ id: string; status: string; approveUrl: string | null }>('/paiement/createOrder', { method: 'POST', body: JSON.stringify(body) }),
+  capturePaypalFormule: (body: Record<string, unknown>) =>
+    request<{ message: string }>('/paiement/captureOrderPaiementFormule', { method: 'POST', body: JSON.stringify(body) }),
+  createAlmaPayment: (body: Record<string, unknown>) =>
+    request<{ id: string; url: string }>('/paiement/alma/createPaymentFormule', { method: 'POST', body: JSON.stringify(body) }),
+  /** Profs de l'élève (2 derniers mois), à prévenir de la recharge. */
+  rechargeInstructors: async (email: string) =>
+    (await request<{ instructors: Partner[] }>(`/auth/user/instructors?email=${encodeURIComponent(email)}`)).instructors ?? [],
+  notifyInstructors: (orderID: string, selectedInstructors: number[], email: string) =>
+    request<{ success: boolean; amount?: number | string }>('/paiement/notifyInstructors', {
+      method: 'POST',
+      body: JSON.stringify({ orderID, selectedInstructors, email }),
+    }),
 };

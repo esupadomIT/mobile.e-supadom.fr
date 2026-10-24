@@ -105,3 +105,40 @@ export interface TokenResponse {
   expiresIn: number;
   user: User;
 }
+
+/** GET /api/auth/user → { user } : profil complet (édition du profil, recharge). */
+export interface FullUser extends User {
+  dob?: string | null;
+  postalCode?: string | null;
+  emailParent?: string | null;
+  phoneParent?: string | null;
+  balance?: string | number | null;
+  priceHour?: string | number | null;
+  inscriptionFees?: string | null;
+  schoolZoneFinal?: string | null;
+  schoolZoneDetected?: string | null;
+  isSocialAuth?: boolean;
+  userClasses?: { classe: { id: number; nom: string; niveauId?: number; niveau?: { id: number; nom: string } } }[];
+  matieres?: { matiere: { id: number; nom: string; classeId?: number } }[];
+}
+
+/** Créneau de disponibilité (GET /api/disponibilites). */
+export interface Disponibilite {
+  id: number;
+  userId: number;
+  startDate: string;
+  endDate: string;
+  isAvailable: boolean;
+  source?: string | null;
+}
+
+export type WeeklySlots = Record<string, { start: string; end: string }[]>;
+
+/** GET /api/student-availability */
+export interface StudentAvailability {
+  showPopup: boolean;
+  needsOnboarding: boolean;
+  schoolYear: string;
+  schoolYearEnd: string;
+  slots: WeeklySlots;
+}
