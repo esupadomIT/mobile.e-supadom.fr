@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 import { api, setAuthToken, setUnauthorizedHandler } from '@/lib/api';
 import { registerForPush, unregisterPush } from '@/lib/push';
-import type { User } from '@/types';
+import type { TokenResponse, User } from '@/types';
 
 const TOKEN_KEY = 'esupadom.accessToken';
 
@@ -12,6 +12,7 @@ type AuthState = {
   token: string | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: (idToken: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -50,8 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, [clearSession]);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const res = await api.login(email, password);
+  const startSession = useCallback(async (res: TokenResponse) => {
     setAuthToken(res.accessToken);
     await SecureStore.setItemAsync(TOKEN_KEY, res.accessToken);
     setUser(res.user);
@@ -59,14 +59,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void registerForPush();
   }, []);
 
+  const signIn = useCallback(
+    async (email: string, password: string) => startSession(await api.login(email, password)),
+    [startSession],
+  );
+  const signInWithGoogle = useCallback(
+    async (idToken: string) => startSession(await api.loginWithGoogle(idToken)),
+    [startSession],
+  );
+
   const signOut = useCallback(async () => {
     await unregisterPush().catch(() => undefined);
     await clearSession();
   }, [clearSession]);
 
   const value = useMemo(
-    () => ({ user, token, isLoading, signIn, signOut }),
-    [user, token, isLoading, signIn, signOut],
+    () => ({ user, token, isLoading, signIn, signInWithGoogle, signOut }),
+    [user, token, isLoading, signIn, signInWithGoogle, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

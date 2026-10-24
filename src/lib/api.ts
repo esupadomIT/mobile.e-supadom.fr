@@ -62,6 +62,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
+  loginWithGoogle: (idToken: string) =>
+    request<TokenResponse>('/v1/auth/google', { method: 'POST', body: JSON.stringify({ idToken }) }),
+  forgotPassword: (email: string) =>
+    request<{ message: string }>('/v1/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
   me: () => request<User>('/v1/auth/me'),
 
   /** Conversations (dernier message seulement) + correspondants possibles. */

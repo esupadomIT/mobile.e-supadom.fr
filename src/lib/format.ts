@@ -10,6 +10,20 @@ export function formatWhen(iso: string): string {
   return d.toDateString() === new Date().toDateString() ? time.format(d) : day.format(d);
 }
 
+const longDay = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+/** Séparateur de jour dans une discussion : « Aujourd'hui », « Hier », « lundi 12 octobre ». */
+export function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Aujourd’hui';
+  if (d.toDateString() === yesterday.toDateString()) return 'Hier';
+  const label = longDay.format(d);
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 export function formatTime(iso: string): string {
   return time.format(new Date(iso));
 }
