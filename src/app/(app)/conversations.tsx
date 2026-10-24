@@ -1,4 +1,4 @@
-import { Link, Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 
@@ -92,8 +92,10 @@ function ConversationRow({ conversation, myId }: { conversation: Conversation; m
     : 'Nouvelle conversation';
 
   return (
-    <Link href={{ pathname: '/chat/[partnerId]', params: { partnerId: String(partner.id) } }} asChild>
-      <Pressable style={({ pressed }) => [styles.row, { backgroundColor: pressed ? c.border : c.surface }]}>
+    <Pressable
+      onPress={() => router.push({ pathname: '/chat/[partnerId]', params: { partnerId: String(partner.id) } })}
+      style={({ pressed }) => [styles.row, { backgroundColor: pressed ? c.border : c.surface }]}
+    >
         <Avatar person={partner} />
         <View style={styles.rowBody}>
           <View style={styles.rowLine}>
@@ -120,16 +122,17 @@ function ConversationRow({ conversation, myId }: { conversation: Conversation; m
             )}
           </View>
         </View>
-      </Pressable>
-    </Link>
+    </Pressable>
   );
 }
 
 function ContactRow({ contact }: { contact: Contact }) {
   const c = useColors();
   return (
-    <Link href={{ pathname: '/chat/[partnerId]', params: { partnerId: String(contact.id) } }} asChild>
-      <Pressable style={({ pressed }) => [styles.row, { backgroundColor: pressed ? c.border : c.surface }]}>
+    <Pressable
+      onPress={() => router.push({ pathname: '/chat/[partnerId]', params: { partnerId: String(contact.id) } })}
+      style={({ pressed }) => [styles.row, { backgroundColor: pressed ? c.border : c.surface }]}
+    >
         <Avatar person={contact} size={40} />
         <View style={styles.rowBody}>
           <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
@@ -138,8 +141,7 @@ function ContactRow({ contact }: { contact: Contact }) {
           <Text style={{ color: c.muted, fontSize: 13 }}>{roleLabel(contact.role)}</Text>
         </View>
         <Text style={{ color: c.primary, fontWeight: '600' }}>Écrire</Text>
-      </Pressable>
-    </Link>
+    </Pressable>
   );
 }
 
