@@ -42,7 +42,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     try {
       const body = await res.json();
       // L'API renvoie selon les routes { error }, { message } ou un tableau de messages (validation).
-      const raw = body?.error ?? body?.message;
+      // Exceptions Nest : { statusCode, error: 'Unauthorized', message: 'Email ou mot de passe incorrect' }
+      // → le message métier est dans `message`, `error` n'est que le libellé HTTP.
+      const raw = typeof body?.statusCode === 'number' ? body?.message ?? body?.error : body?.error ?? body?.message;
       if (typeof raw === 'string') message = raw;
       else if (Array.isArray(raw) && typeof raw[0] === 'string') message = raw[0];
     } catch {
