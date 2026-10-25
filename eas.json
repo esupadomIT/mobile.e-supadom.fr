@@ -7,12 +7,12 @@
       "developmentClient": true,
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://admin.mobile.e-supadom.fr" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://test.admin.mobile.e-supadom.fr" }
     },
     "preview": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://admin.mobile.e-supadom.fr" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://test.admin.mobile.e-supadom.fr" }
     },
     "production": {
       "autoIncrement": true,

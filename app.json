@@ -31,7 +31,10 @@
         {
           "color": "#2F80ED"
         }
-      ]
+      ],
+      "expo-web-browser",
+      "expo-asset",
+      "expo-font"
     ],
     "scheme": [
       "esupadom",
