@@ -1,10 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '@/components/Avatar';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { BrandHeader, ScreenHeader } from '@/components/ScreenHeader';
 import { YellowButton } from '@/components/ui';
+import { useManualRefresh } from '@/hooks/useManualRefresh';
 import { useAuth } from '@/lib/auth';
 import { sortedConversations, useChat } from '@/lib/chat';
 import { dayLabel, formatTime, fullName, messagePreview } from '@/lib/format';
@@ -36,32 +37,33 @@ export default function HomeScreen() {
     ...(chat.data?.conversations ?? []).filter((conv) => conv.partner.role === 'STUDENT').map((conv) => conv.partner.id),
   ]).size;
 
-  const refreshing = me.isRefetching || seances.isRefetching || chat.isRefetching;
-  const onRefresh = () => {
-    void me.refetch();
-    void seances.refetch();
-    void chat.refetch();
-  };
+  const { refreshing, onRefresh } = useManualRefresh(() =>
+    Promise.allSettled([me.refetch(), seances.refetch(), chat.refetch()]),
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
+      <BrandHeader title="Accueil" />
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
       >
         <ScreenHeader
-          subtitle={`${hello()} 👋`}
-          title={user?.firstName ?? 'e-Supadom'}
-          right={<Image source={require('../../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />}
+          embedded
+          subtitle="Ton espace personnel"
+          title={`${hello()}, ${user?.firstName ?? 'à toi'}`}
+          right={<Pressable accessibilityRole="button" accessibilityLabel="Ouvrir mon profil" onPress={() => router.push('/profil')}><Avatar person={user ?? { id: 0, firstName: '', lastName: '', role: 'STUDENT' }} size={46} /></Pressable>}
         >
+          <Text style={{ color: c.muted, fontSize: 14, lineHeight: 21 }}>Une nouvelle journée pour avancer ensemble.</Text>
           <View style={styles.stats}>
             {isStudent ? (
-              <Stat label="Solde" value={typeof hours === 'number' ? `${hours.toFixed(1).replace('.', ',')} h` : '—'} />
+              <Stat label="Solde de cours" value={typeof hours === 'number' ? `${hours.toFixed(1).replace('.', ',')} h` : '—'} highlight />
             ) : (
-              <Stat label="Élèves" value={String(studentCount)} />
+              <Stat label="Élèves suivis" value={String(studentCount)} highlight />
             )}
             <Stat label="Séances à venir" value={String(upcoming.length)} />
-            <Stat label="Non lus" value={String(unread)} highlight={unread > 0} />
+            <Stat label="Messages non lus" value={String(unread)} />
           </View>
         </ScreenHeader>
 
@@ -110,7 +112,7 @@ export default function HomeScreen() {
           {/* Derniers messages */}
           <Section title="Derniers messages" action={{ label: 'Tout voir', onPress: () => router.push('/messages') }}>
             {recent.length === 0 ? (
-              <Placeholder text="Pas encore de message." />
+              <Placeholder text="Pas encore de message." icon="chatbubbles-outline" />
             ) : (
               <View style={[styles.card, shadow, { backgroundColor: c.surface, paddingVertical: 4 }]}>
                 {recent.map((conv, i) => (
@@ -133,8 +135,8 @@ export default function HomeScreen() {
                       </Text>
                     </View>
                     {conv.unreadCount > 0 && (
-                      <View style={[styles.dot, { backgroundColor: c.accent }]}>
-                        <Text style={{ color: c.onAccent, fontSize: 12, fontWeight: '800' }}>{conv.unreadCount}</Text>
+                      <View style={[styles.dot, { backgroundColor: c.notification }]}>
+                        <Text style={{ color: c.onNotification, fontSize: 12, fontWeight: '800' }}>{conv.unreadCount}</Text>
                       </View>
                     )}
                   </Pressable>
@@ -151,9 +153,9 @@ export default function HomeScreen() {
 function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   const c = useColors();
   return (
-    <View style={[styles.stat, { backgroundColor: highlight ? c.accent : 'rgba(255,255,255,0.16)' }]}>
-      <Text style={[styles.statValue, { color: highlight ? c.onAccent : '#fff' }]}>{value}</Text>
-      <Text style={[styles.statLabel, { color: highlight ? c.onAccent : 'rgba(255,255,255,0.85)' }]}>{label}</Text>
+    <View style={[styles.stat, { backgroundColor: highlight ? c.primary : c.bg, borderColor: highlight ? c.primary : c.border }]}>
+      <Text style={[styles.statValue, { color: highlight ? '#fff' : c.text }]}>{value}</Text>
+      <Text style={[styles.statLabel, { color: highlight ? '#EAF3FF' : c.muted }]}>{label}</Text>
     </View>
   );
 }
@@ -175,10 +177,11 @@ function Section({ title, action, children }: { title: string; action?: { label:
   );
 }
 
-function Placeholder({ text }: { text: string }) {
+function Placeholder({ text, icon = 'calendar-outline' }: { text: string; icon?: React.ComponentProps<typeof Ionicons>['name'] }) {
   const c = useColors();
   return (
     <View style={[styles.card, { backgroundColor: c.surface, alignItems: 'center' }]}>
+      <View style={[styles.emptyIcon, { backgroundColor: c.primarySoft }]}><Ionicons name={icon} size={24} color={c.primary} /></View>
       <Text style={{ color: c.muted, textAlign: 'center', lineHeight: 20 }}>{text}</Text>
     </View>
   );
@@ -191,6 +194,7 @@ function NextSeance({ seance }: { seance: Seance }) {
   const c = useColors();
   return (
     <View style={[styles.card, shadow, styles.next, { backgroundColor: c.surface, borderLeftColor: c.accent }]}>
+      <View style={styles.sessionLabel}><View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.primary }} /><Text style={{ color: c.muted, fontSize: 11, fontWeight: '800', letterSpacing: 1 }}>TON RENDEZ-VOUS</Text><Ionicons name="videocam-outline" size={20} color={c.primary} style={{ marginLeft: 'auto' }} /></View>
       <View style={[styles.tag, { backgroundColor: c.primarySoft }]}>
         <Text style={{ color: c.primary, fontWeight: '700', fontSize: 12 }}>{when(seance)}</Text>
       </View>
@@ -238,21 +242,22 @@ function SeanceCard({ seance }: { seance: Seance }) {
 
 const styles = StyleSheet.create({
   quick: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  quickIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  quickIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   content: { paddingBottom: 32 },
-  logo: { width: 92, height: 44, backgroundColor: '#fff', borderRadius: 12 },
   stats: { flexDirection: 'row', gap: 10 },
-  stat: { flex: 1, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 12, gap: 2 },
-  statValue: { fontSize: 20, fontWeight: '800' },
-  statLabel: { fontSize: 12, fontWeight: '600' },
-  body: { padding: 16, gap: 22 },
+  stat: { flex: 1, borderRadius: radius.md, borderWidth: 1, paddingVertical: 16, paddingHorizontal: 10, gap: 7 },
+  statValue: { fontSize: 25, fontWeight: '800', letterSpacing: -0.8 },
+  statLabel: { fontSize: 11, fontWeight: '600', lineHeight: 16 },
+  body: { padding: 20, gap: 26 },
   section: { gap: 10 },
   sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { fontSize: 18, fontWeight: '800' },
-  card: { borderRadius: radius.lg, padding: 16 },
-  next: { gap: 6, borderLeftWidth: 5 },
+  sectionTitle: { fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
+  card: { borderRadius: radius.lg, padding: 20, gap: 8 },
+  emptyIcon: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  sessionLabel: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 },
+  next: { gap: 8, borderLeftWidth: 4 },
   tag: { alignSelf: 'flex-start', borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
-  nextSubject: { fontSize: 20, fontWeight: '800', marginTop: 4 },
+  nextSubject: { fontSize: 24, fontWeight: '800', letterSpacing: -0.6, marginTop: 6 },
   nextActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
   carousel: { gap: 12, paddingRight: 8 },
   mini: { width: 200, borderRadius: radius.lg, padding: 14, gap: 4 },

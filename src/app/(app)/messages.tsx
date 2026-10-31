@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -14,6 +15,7 @@ import {
 import { Avatar } from '@/components/Avatar';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { LIST_POLL_MS } from '@/config';
+import { useManualRefresh } from '@/hooks/useManualRefresh';
 import { useAuth } from '@/lib/auth';
 import { sortedConversations, startableContacts, useChat } from '@/lib/chat';
 import { formatWhen, fullName, messagePreview, roleLabel } from '@/lib/format';
@@ -29,7 +31,8 @@ const matches = (p: { firstName: string; lastName: string }, q: string) =>
 export default function ConversationsScreen() {
   const { user } = useAuth();
   const c = useColors();
-  const { data, isLoading, isError, refetch, isRefetching } = useChat(LIST_POLL_MS);
+  const { data, isLoading, isError, refetch } = useChat(LIST_POLL_MS);
+  const { refreshing, onRefresh } = useManualRefresh(() => refetch());
   const [query, setQuery] = useState('');
 
   const conversations = useMemo(
@@ -58,8 +61,8 @@ export default function ConversationsScreen() {
       <View style={styles.listTitleRow}>
         <Text style={[styles.sectionTitle, { color: c.muted }]}>Conversations</Text>
         {totalUnread > 0 && (
-          <View style={[styles.badge, { backgroundColor: c.accent }]}>
-            <Text style={[styles.badgeText, { color: c.onAccent }]}>{totalUnread} non lu{totalUnread > 1 ? 's' : ''}</Text>
+          <View style={[styles.badge, { backgroundColor: c.notification }]}>
+            <Text style={[styles.badgeText, { color: c.onNotification }]}>{totalUnread} non lu{totalUnread > 1 ? 's' : ''}</Text>
           </View>
         )}
       </View>
@@ -71,15 +74,20 @@ export default function ConversationsScreen() {
       <ScreenHeader
         title="Messages"
         subtitle={totalUnread > 0 ? `${totalUnread} message${totalUnread > 1 ? 's' : ''} non lu${totalUnread > 1 ? 's' : ''}` : 'Tes échanges'}
+        right={
+          <Pressable accessibilityRole="button" accessibilityLabel="Retour" onPress={() => router.canGoBack() ? router.back() : router.replace('/accueil')} hitSlop={10} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: c.primarySoft }}>
+            <Ionicons name="arrow-back" size={23} color={c.primary} />
+          </Pressable>
+        }
       >
-        <View style={[styles.search, { backgroundColor: '#FFFFFF' }]}>
-          <Text style={{ color: c.muted, fontSize: 16 }}>⌕</Text>
+        <View style={[styles.search, { backgroundColor: c.bg, borderColor: c.border }]}>
+          <Ionicons name="search-outline" size={20} color={c.muted} />
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder={isStudent ? 'Rechercher un prof' : 'Rechercher un élève'}
             placeholderTextColor={c.muted}
-            style={[styles.searchInput, { color: '#1B2433' }]}
+            style={[styles.searchInput, { color: c.text }]}
             autoCorrect={false}
             clearButtonMode="while-editing"
           />
@@ -97,13 +105,13 @@ export default function ConversationsScreen() {
         <FlatList
           data={conversations}
           keyExtractor={(conv) => String(conv.id)}
-                    refreshing={isRefetching}
-          onRefresh={refetch}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
           ListHeaderComponent={header}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={[styles.empty, { backgroundColor: c.surface }]}>
-              <Text style={{ fontSize: 34 }}>💬</Text>
+              <View style={[styles.emptyIcon, { backgroundColor: c.primarySoft }]}><Ionicons name="chatbubbles-outline" size={28} color={c.primary} /></View>
               <Text style={[styles.emptyTitle, { color: c.text }]}>
                 {query ? 'Aucun résultat' : 'Aucune conversation pour l’instant'}
               </Text>
@@ -170,7 +178,7 @@ function ConversationRow({ conversation, myId, first, last }: { conversation: Co
             {preview}
           </Text>
           {unread && (
-            <View style={[styles.count, { backgroundColor: c.primary }]}>
+            <View style={[styles.count, { backgroundColor: c.notification }]}>
               <Text style={styles.badgeText}>{unreadCount}</Text>
             </View>
           )}
@@ -201,13 +209,13 @@ function ContactChip({ contact }: { contact: Contact }) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 6 },
-  listContent: { paddingHorizontal: 16, paddingBottom: 32 },
+  listContent: { paddingHorizontal: 20, paddingBottom: 32 },
   headerBlock: { gap: 18, paddingTop: 18, paddingBottom: 10 },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: radius.md, paddingHorizontal: 12 },
-  searchInput: { flex: 1, paddingVertical: 11, fontSize: 16 },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: radius.md, borderWidth: 1, paddingHorizontal: 16, minHeight: 52 },
+  searchInput: { flex: 1, paddingVertical: 14, fontSize: 15 },
   contactsBlock: { gap: 10 },
   contacts: { gap: 10, paddingRight: 8 },
-  chip: { width: 92, alignItems: 'center', gap: 6, paddingVertical: 12, borderRadius: radius.lg },
+  chip: { width: 96, alignItems: 'center', gap: 8, paddingVertical: 16, borderRadius: radius.lg },
   write: { borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3 },
   chipName: { fontSize: 13, fontWeight: '600', maxWidth: 80 },
   listTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -215,11 +223,12 @@ const styles = StyleSheet.create({
   badge: { borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3 },
   badgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   row: { flexDirection: 'row', alignItems: 'center', paddingLeft: 14, gap: 12 },
-  rowBody: { flex: 1, gap: 3, paddingVertical: 14, paddingRight: 14 },
+  rowBody: { flex: 1, gap: 5, paddingVertical: 18, paddingRight: 16 },
   rowLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   name: { fontSize: 16, fontWeight: '700', flexShrink: 1 },
   preview: { fontSize: 14, flex: 1 },
   count: { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' },
   empty: { alignItems: 'center', gap: 8, padding: 28, borderRadius: radius.lg },
+  emptyIcon: { width: 64, height: 64, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   emptyTitle: { fontSize: 17, fontWeight: '700', textAlign: 'center' },
 });

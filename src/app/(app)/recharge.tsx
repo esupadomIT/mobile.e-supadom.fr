@@ -8,6 +8,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, Text
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Chip, Choice, Section, StepBar } from '@/components/forms';
+import { MessagesButton } from '@/components/MessagesButton';
 import { Notice, PrimaryButton, SecondaryButton, YellowButton } from '@/components/ui';
 import { API_URL } from '@/config';
 import { api } from '@/lib/api';
@@ -104,8 +105,9 @@ export default function RechargeScreen() {
               <Ionicons name={done || step === 0 ? 'close' : 'chevron-back'} size={26} color="#fff" />
             </Pressable>
             <Text style={styles.headerTitle}>Recharger mon compte</Text>
+            <MessagesButton inverse />
           </View>
-          {!done && classe ? <StepBar steps={steps} current={step} /> : null}
+          {!done && classe ? <StepBar compact steps={steps} current={step} /> : null}
         </View>
         <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 32 }]} keyboardShouldPersistTaps="handled">
           {content}

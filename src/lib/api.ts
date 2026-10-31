@@ -1,4 +1,5 @@
 import { API_URL } from '@/config';
+import type { TeacherRequest } from '@/lib/find-teacher';
 import type { Forfait, Parametre, SchoolHoliday, Stage, TypeCours } from '@/lib/pricing';
 import type {
   ChatData,
@@ -39,7 +40,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init,
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json',
+        ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         ...init.headers,
       },
@@ -70,6 +71,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  verifyTeacher: (reference: string) => request<{ valid: boolean; teacher?: Partner & { reference: string } }>('/findTeacher/verify-id', { method: 'POST', body: JSON.stringify({ reference }) }),
+  requestTeacher: (body: TeacherRequest) => request<{ success: boolean; requestId?: number; message?: string }>('/findTeacher/reservation', { method: 'POST', body: JSON.stringify(body) }),
+  uploadTeacherDocument: (body: FormData) => request<{ success: boolean; files: { originalName: string; filename: string; size: number; type: string }[] }>('/findTeacher/upload', { method: 'POST', body }),
   login: (email: string, password: string) =>
     request<TokenResponse>('/v1/auth/token', {
       method: 'POST',

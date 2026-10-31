@@ -27,11 +27,11 @@ export function Field({
     const [focused, setFocused] = useState(false);
     return (
       <View style={styles.field}>
-        <Text style={[styles.label, { color: c.muted }]}>{label}</Text>
+        <Text style={[styles.label, { color: c.text }]}>{label}</Text>
         <View
           style={[
             styles.inputBox,
-            { backgroundColor: c.surface, borderColor: focused ? c.primary : c.border },
+            { backgroundColor: focused ? c.surface : c.bg, borderColor: focused ? c.primary : c.border },
           ]}
         >
           <TextInput
@@ -59,11 +59,12 @@ export function PrimaryButton({ title, onPress, loading, disabled }: { title: st
   const off = disabled || loading;
   return (
     <Pressable
+      accessibilityRole="button"
       onPress={onPress}
       disabled={off}
       style={({ pressed }) => [
         styles.button,
-        { backgroundColor: pressed ? c.primaryPressed : c.primary, opacity: off && !loading ? 0.5 : 1 },
+        { backgroundColor: pressed ? c.primaryPressed : c.primary, opacity: off && !loading ? 0.5 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
       ]}
     >
       {loading ? <ActivityIndicator color={c.onPrimary} /> : <Text style={[styles.buttonText, { color: c.onPrimary }]}>{title}</Text>}
@@ -135,13 +136,13 @@ export function Notice({ kind, children }: { kind: 'error' | 'success'; children
 }
 
 const styles = StyleSheet.create({
-  field: { gap: 6 },
+  field: { gap: 8 },
   label: { fontSize: 13, fontWeight: '600' },
-  inputBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderRadius: radius.md, paddingHorizontal: 14 },
-  input: { flex: 1, paddingVertical: 14, fontSize: 16 },
-  button: { height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 },
+  inputBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 16, minHeight: 56 },
+  input: { flex: 1, paddingVertical: 16, fontSize: 16 },
+  button: { minHeight: 56, paddingVertical: 14, paddingHorizontal: 18, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 },
   secondary: { borderWidth: 1.5 },
-  small: { height: 40, paddingHorizontal: 18 },
+  small: { minHeight: 44, paddingVertical: 10, paddingHorizontal: 18 },
   buttonText: { fontSize: 16, fontWeight: '700' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 4 },
   line: { flex: 1, height: StyleSheet.hairlineWidth * 2 },

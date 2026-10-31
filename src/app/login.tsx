@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Link, Redirect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import {
@@ -65,14 +66,25 @@ export default function LoginScreen() {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.brand}>
-            <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
-            <Text style={[styles.title, { color: c.text }]}>Bon retour !</Text>
-            <Text style={[styles.subtitle, { color: c.muted }]}>
-              Connecte-toi pour échanger avec tes profs et tes élèves.
-            </Text>
+            <View style={styles.logoBox}>
+              <Image source={require('../../assets/logo-transparent.png')} style={styles.logo} resizeMode="contain" />
+            </View>
+            <View style={[styles.hero, { backgroundColor: c.primary }]}>
+              <View pointerEvents="none" style={styles.heroRing} />
+              <View style={styles.eyebrow}>
+                <Ionicons name="school-outline" size={16} color="#6EE7B7" />
+                <Text style={styles.eyebrowText}>TON ESPACE DE RÉUSSITE</Text>
+              </View>
+              <Text style={styles.title}>Un pas de plus{ '\n' }vers <Text style={{ color: '#6EE7B7' }}>tes objectifs.</Text></Text>
+              <Text style={styles.subtitle}>Tes cours, tes échanges et tes progrès.{ '\n' }Tout commence ici.</Text>
+            </View>
           </View>
 
-          <View style={[styles.card, shadow, { backgroundColor: c.surface }]}>
+          <View style={[styles.card, shadow, { backgroundColor: c.surface, borderColor: c.border }]}>
+            <View style={{ gap: 5, marginBottom: 6 }}>
+              <Text style={[styles.formTitle, { color: c.text }]}>Heureux de te retrouver</Text>
+              <Text style={{ color: c.muted, fontSize: 14 }}>Connecte-toi à ton espace personnel.</Text>
+            </View>
             <Field
               label="Adresse e-mail"
               placeholder="prenom.nom@exemple.fr"
@@ -139,12 +151,18 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, justifyContent: 'center', padding: 20, gap: 20 },
-  brand: { alignItems: 'center', gap: 6 },
-  logo: { width: 180, height: 72, marginBottom: 8 },
-  title: { fontSize: 26, fontWeight: '800', letterSpacing: -0.3 },
-  subtitle: { fontSize: 15, textAlign: 'center', lineHeight: 21, maxWidth: 300 },
-  card: { borderRadius: radius.lg, padding: 20, gap: 16 },
+  scroll: { flexGrow: 1, padding: 20, paddingTop: 12, paddingBottom: 32, gap: 20, width: '100%', maxWidth: 540, alignSelf: 'center' },
+  brand: { gap: 20 },
+  logoBox: { alignSelf: 'flex-start', height: 46, paddingHorizontal: 10, justifyContent: 'center', overflow: 'hidden' },
+  logo: { width: 136, height: 68 },
+  hero: { borderRadius: 28, padding: 24, paddingBottom: 36, gap: 18, overflow: 'hidden' },
+  heroRing: { position: 'absolute', width: 210, height: 210, borderRadius: 105, borderWidth: 35, borderColor: 'rgba(255,255,255,0.07)', right: -100, top: -65 },
+  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  eyebrowText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1.4 },
+  title: { color: '#fff', fontSize: 32, lineHeight: 39, fontWeight: '800', letterSpacing: -1.2 },
+  subtitle: { color: '#E4EFFF', fontSize: 14, lineHeight: 22 },
+  formTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.6 },
+  card: { borderRadius: radius.lg, borderWidth: 1, padding: 22, gap: 18, marginTop: -36, marginHorizontal: 8 },
   forgot: { alignSelf: 'flex-end', marginTop: -6 },
   footer: { paddingVertical: 8 },
 });

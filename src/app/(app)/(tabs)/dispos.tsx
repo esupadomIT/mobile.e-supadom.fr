@@ -4,9 +4,10 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { BrandHeader, ScreenHeader } from '@/components/ScreenHeader';
 import { Section, SelectField } from '@/components/forms';
 import { Notice, PrimaryButton, SecondaryButton } from '@/components/ui';
+import { useManualRefresh } from '@/hooks/useManualRefresh';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { formatIsoDay, hhmm, isoDay, SLOT_TIMES } from '@/lib/tz';
@@ -27,10 +28,11 @@ export default function DisposScreen() {
 function InstructorDispos({ userId }: { userId: number }) {
   const c = useColors();
   const qc = useQueryClient();
-  const { data, isLoading, isRefetching, refetch, error } = useQuery({
+  const { data, isLoading, refetch, error } = useQuery({
     queryKey: [...DISPOS_KEY, userId],
     queryFn: () => api.disponibilites(userId),
   });
+  const { refreshing, onRefresh } = useManualRefresh(() => refetch());
 
   const remove = useMutation({
     mutationFn: (id: number) => api.deleteDisponibilite(id),
@@ -58,9 +60,10 @@ function InstructorDispos({ userId }: { userId: number }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }} refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}>
-        <ScreenHeader title="Disponibilités" subtitle="Mon agenda">
-          <Text style={styles.headerText}>Indiquez quand vous pouvez donner cours : l’équipe et vos élèves s’en servent pour planifier les séances.</Text>
+      <BrandHeader title="Agenda" />
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 32 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        <ScreenHeader embedded title="Disponibilités" subtitle="Mon agenda">
+          <Text style={[styles.headerText, { color: c.muted }]}>Indiquez quand vous pouvez donner cours : l’équipe et vos élèves s’en servent pour planifier les séances.</Text>
         </ScreenHeader>
         <View style={styles.body}>
           <PrimaryButton title="Ajouter des disponibilités" onPress={() => router.push('/dispos-ajout')} />
@@ -121,7 +124,8 @@ function nextSlot(slots: { start: string; end: string }[]) {
 function StudentDispos() {
   const c = useColors();
   const qc = useQueryClient();
-  const { data, isLoading, error, refetch, isRefetching } = useQuery({ queryKey: ['student-availability'], queryFn: api.studentAvailability });
+  const { data, isLoading, error, refetch } = useQuery({ queryKey: ['student-availability'], queryFn: api.studentAvailability });
+  const { refreshing, onRefresh } = useManualRefresh(() => refetch());
   const [slots, setSlots] = useState<WeeklySlots>({});
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
@@ -158,9 +162,10 @@ function StudentDispos() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }} refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}>
-        <ScreenHeader title="Disponibilités" subtitle="Mes créneaux de la semaine">
-          <Text style={styles.headerText}>
+      <BrandHeader title="Agenda" />
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 32 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        <ScreenHeader embedded title="Disponibilités" subtitle="Mes créneaux de la semaine">
+          <Text style={[styles.headerText, { color: c.muted }]}>
             Indiquez quand vous êtes disponible chaque semaine : ces créneaux sont répétés {until ? `jusqu’au ${until}` : 'toute l’année scolaire'}, hors vacances scolaires et jours fériés.
           </Text>
         </ScreenHeader>
@@ -218,8 +223,8 @@ function StudentDispos() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 16, gap: 14, marginTop: -8 },
-  headerText: { color: 'rgba(255,255,255,0.9)', fontSize: 14, lineHeight: 20 },
+  body: { padding: 20, gap: 16 },
+  headerText: { fontSize: 14, lineHeight: 22 },
   slot: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: radius.md, padding: 12 },
   add: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,7 +10,7 @@ import { radius, shadow, useColors } from '@/theme';
 export function Section({ title, subtitle, children, right }: { title?: string; subtitle?: string; children: ReactNode; right?: ReactNode }) {
   const c = useColors();
   return (
-    <View style={[styles.section, shadow, { backgroundColor: c.surface }]}>
+    <View style={[styles.section, shadow, { backgroundColor: c.surface, borderColor: c.border }]}>
       {title ? (
         <View style={styles.sectionHead}>
           <View style={{ flex: 1, gap: 2 }}>
@@ -256,8 +256,26 @@ function MonthCalendar({ value, min, max, onPick }: { value: string | null; min?
 }
 
 /** Étapes d'un parcours (pastilles numérotées défilantes). */
-export function StepBar({ steps, current }: { steps: string[]; current: number }) {
+export function StepBar({ steps, current, compact = false }: { steps: string[]; current: number; compact?: boolean }) {
   const c = useColors();
+  if (compact) return (
+    <View style={{ gap: 14 }} accessible accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: steps.length, now: current + 1, text: `Étape ${current + 1} sur ${steps.length} : ${steps[current]}` }}>
+      <View style={styles.compactSteps}>
+        {steps.map((label, index) => (
+          <Fragment key={label}>
+            {index > 0 ? <View style={[styles.stepConnector, { backgroundColor: index <= current ? c.accent : 'rgba(255,255,255,0.3)' }]} /> : null}
+            <View style={[styles.compactDot, { backgroundColor: index === current ? c.yellow : index < current ? c.accent : 'rgba(255,255,255,0.16)', borderColor: index === current ? c.yellow : index < current ? c.accent : 'rgba(255,255,255,0.5)' }]}>
+              {index < current ? <Ionicons name="checkmark" size={17} color={c.onAccent} /> : <Text style={{ color: index === current ? c.onYellow : '#FFFFFF', fontSize: 13, fontWeight: '800' }}>{index + 1}</Text>}
+            </View>
+          </Fragment>
+        ))}
+      </View>
+      <View style={styles.compactCaption}>
+        <Text style={styles.compactTitle}>{steps[current]}</Text>
+        <Text style={styles.compactCount}>Étape {current + 1}/{steps.length}</Text>
+      </View>
+    </View>
+  );
   return (
     <View style={styles.steps}>
       {steps.map((s, i) => {
@@ -285,10 +303,16 @@ export function StepBar({ steps, current }: { steps: string[]; current: number }
 }
 
 const styles = StyleSheet.create({
-  section: { borderRadius: radius.lg, padding: 16, gap: 12 },
+  compactSteps: { flexDirection: 'row', alignItems: 'center' },
+  compactDot: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  stepConnector: { flex: 1, height: 2, marginHorizontal: 5, borderRadius: 1 },
+  compactCaption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  compactTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', flex: 1 },
+  compactCount: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '600' },
+  section: { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, padding: 20, gap: 16 },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle: { fontSize: 17, fontWeight: '800' },
-  choice: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: radius.md, padding: 14 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', letterSpacing: -0.4 },
+  choice: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: radius.md, padding: 16 },
   chip: { borderWidth: 1.5, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 },
   label: { fontSize: 13, fontWeight: '600' },
   box: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderRadius: radius.md, paddingHorizontal: 14, height: 50 },

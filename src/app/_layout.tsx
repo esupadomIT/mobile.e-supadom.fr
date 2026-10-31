@@ -3,13 +3,44 @@ import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+import { useCallback, useEffect, useState } from 'react';
+import { View } from 'react-native';
 
-import { AuthProvider } from '@/lib/auth';
+import { StartupScreen } from '@/components/StartupScreen';
+import { AuthProvider, useAuth } from '@/lib/auth';
 import { CHAT_KEY } from '@/lib/chat';
 import '@/lib/push'; // enregistre le handler d'affichage des notifications
 
 const LAST_HANDLED_KEY = 'esupadom.lastHandledNotification';
+void SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+function AppContent() {
+  const { isLoading } = useAuth();
+  const [logoReady, setLogoReady] = useState(false);
+  const [introFinished, setIntroFinished] = useState(false);
+  const showStartup = isLoading || !introFinished;
+
+  const onLogoReady = useCallback(() => {
+    SplashScreen.hide();
+    setLogoReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!logoReady) return;
+    // Laisse voir le logo et sa barre même si la session est restaurée immédiatement.
+    const timer = setTimeout(() => setIntroFinished(true), 1000);
+    return () => clearTimeout(timer);
+  }, [logoReady]);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <StatusBar style={showStartup ? 'dark' : 'auto'} />
+      <Stack screenOptions={{ headerShown: false }} />
+      {showStartup ? <StartupScreen onReady={onLogoReady} /> : null}
+    </View>
+  );
+}
 
 /**
  * Ouvre la conversation quand l'utilisateur touche une notification push.
@@ -56,8 +87,7 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <StatusBar style="auto" />
-        <Stack screenOptions={{ headerShown: false }} />
+        <AppContent />
       </AuthProvider>
     </QueryClientProvider>
   );
