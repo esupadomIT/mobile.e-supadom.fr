@@ -10,7 +10,10 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://test.admin.mobile.e-supadom.fr"
+        "EXPO_PUBLIC_API_URL": "https://test.admin.mobile.e-supadom.fr",
+        "EXPO_PUBLIC_FILES_URL": "https://test.e-supadom.fr",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "942090691352-7hbssp31r0b9e3f7ec72ahoj91c653df.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "942090691352-qqialbj21tlr7he5901u6s11cip7sg67.apps.googleusercontent.com"
       }
     },
     "preview": {
@@ -19,18 +22,39 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://test.admin.mobile.e-supadom.fr"
+        "EXPO_PUBLIC_API_URL": "https://test.admin.mobile.e-supadom.fr",
+        "EXPO_PUBLIC_FILES_URL": "https://test.e-supadom.fr",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "942090691352-7hbssp31r0b9e3f7ec72ahoj91c653df.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "942090691352-qqialbj21tlr7he5901u6s11cip7sg67.apps.googleusercontent.com"
+      }
+    },
+    "staging": {
+      "environment": "preview",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://test.admin.mobile.e-supadom.fr",
+        "EXPO_PUBLIC_FILES_URL": "https://test.e-supadom.fr",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "942090691352-7hbssp31r0b9e3f7ec72ahoj91c653df.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "942090691352-qqialbj21tlr7he5901u6s11cip7sg67.apps.googleusercontent.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://admin.mobile.e-supadom.fr"
+        "EXPO_PUBLIC_API_URL": "https://admin.mobile.e-supadom.fr",
+        "EXPO_PUBLIC_FILES_URL": "https://e-supadom.fr",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "942090691352-7hbssp31r0b9e3f7ec72ahoj91c653df.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "942090691352-qqialbj21tlr7he5901u6s11cip7sg67.apps.googleusercontent.com"
       }
     }
   },
   "submit": {
     "production": {
+      "android": {
+        "track": "internal"
+      }
+    },
+    "staging": {
       "android": {
         "track": "internal"
       }
