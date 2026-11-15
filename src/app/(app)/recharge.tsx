@@ -350,7 +350,7 @@ function StepMatieres({ st, patch, comp, data, next, back, refetchUser }: StepPr
 
       {error ? <Notice kind="error">{error}</Notice> : null}
       <NavButtons onNext={onNext} back={back} />
-      <AddMatieresSheet
+      {adding ? <AddMatieresSheet
         visible={adding}
         onClose={() => setAdding(false)}
         data={data}
@@ -358,7 +358,7 @@ function StepMatieres({ st, patch, comp, data, next, back, refetchUser }: StepPr
           setAdding(false);
           refetchUser();
         }}
-      />
+      /> : null}
     </>
   );
 }
@@ -375,10 +375,6 @@ function AddMatieresSheet({ visible, onClose, data, onAdded }: { visible: boolea
 
   useEffect(() => {
     if (!visible || !classeId) return;
-    setList(null);
-    setPicked([]);
-    setSearch('');
-    setError(null);
     const mine = profileMatieres(data.user);
     const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
     api
@@ -486,15 +482,10 @@ function StepHeures({ st, patch, comp, next, back }: StepProps) {
 
 const ALMA_COLORS: Record<string, string> = { alma4x: '#2563EB', alma10x: '#7C3AED', alma12x: '#DB2777' };
 
-function StepModePaiement({ st, patch, comp, next, back }: StepProps) {
-  const c = useColors();
-  const visibles = (['alma4x', 'alma10x', 'alma12x'] as const).filter((m) => comp.alma[m].eligible);
-  const majMax = Math.max(0, ...visibles.map((m) => comp.alma[m].majoration));
-  const heuresPack = comp.prixHoraire > 0 ? comp.calculatePrice / comp.prixHoraire : 0;
-  const economie = (maj: number) => Math.max(0, majMax - maj) * heuresPack;
-  const nom = comp.formuleAffichee?.nom || 'votre formule';
-
-  const Card = ({ mode, title, badge, amount, sub, color }: { mode: ModePaiement; title: string; badge: string; amount: number; sub: string; color: string }) => {
+function PaymentModeCard({ mode, title, badge, amount, sub, color, comp, patch, visibles }: { mode: ModePaiement; title: string; badge: string; amount: number; sub: string; color: string; comp: StepProps['comp']; patch: StepProps['patch']; visibles: ('alma4x' | 'alma10x' | 'alma12x')[] }) {
+ const c = useColors();
+ const majMax = Math.max(0, ...visibles.map(m => comp.alma[m].majoration));
+ const economie = (maj: number) => Math.max(0, majMax-maj) * (comp.prixHoraire > 0 ? comp.calculatePrice / comp.prixHoraire : 0);
     const selected = comp.mode === mode;
     const saving = economie(mode === 'comptant' ? 0 : comp.alma[mode].majoration);
     return (
@@ -517,7 +508,13 @@ function StepModePaiement({ st, patch, comp, next, back }: StepProps) {
         ) : null}
       </Pressable>
     );
-  };
+}
+
+function StepModePaiement({ st, patch, comp, next, back }: StepProps) {
+  const c = useColors();
+  const visibles = (['alma4x', 'alma10x', 'alma12x'] as const).filter((m) => comp.alma[m].eligible);
+  const nom = comp.formuleAffichee?.nom || 'votre formule';
+
 
   return (
     <>
@@ -531,8 +528,7 @@ function StepModePaiement({ st, patch, comp, next, back }: StepProps) {
             ))}
           </View>
         ) : null}
-        <Card
-          mode="comptant"
+        <PaymentModeCard comp={comp} patch={patch} visibles={visibles}           mode="comptant"
           title="Paiement comptant"
           badge="💚 Meilleur tarif"
           color="#22C55E"
@@ -542,8 +538,7 @@ function StepModePaiement({ st, patch, comp, next, back }: StepProps) {
         {visibles.map((m) => {
           const n = m === 'alma4x' ? 4 : m === 'alma10x' ? 10 : 12;
           return (
-            <Card
-              key={m}
+            <PaymentModeCard comp={comp} patch={patch} visibles={visibles}               key={m}
               mode={m}
               title={`Payer en ${n} fois avec Alma`}
               badge={m === 'alma4x' ? '🔷 Paiement flexible' : m === 'alma12x' ? '💗 Mensualité la plus basse' : '⭐ Le plus choisi'}

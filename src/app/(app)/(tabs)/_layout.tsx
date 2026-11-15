@@ -1,22 +1,26 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Tabs } from 'expo-router';
+import { router, Tabs } from 'expo-router';
 import { View, type ColorValue } from 'react-native';
 
 import { useChat } from '@/lib/chat';
 import { useAuth } from '@/lib/auth';
-import { useColors } from '@/theme';
+import { fonts, useColors } from '@/theme';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 const icon = (on: IconName, off: IconName) =>
-  function TabIcon({ color, focused, size }: { color: ColorValue; focused: boolean; size: number }) {
+  function TabIcon({ color, focused }: { color: ColorValue; focused: boolean; size: number }) {
+    const c = useColors();
     return (
-      <View style={{ minWidth: 48, height: 28, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? 'rgba(47,128,237,0.11)' : 'transparent' }}>
-        <Ionicons name={focused ? on : off} size={Math.min(size, 23)} color={color as string} />
+      <View style={{ width: 44, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? c.primarySoft : 'transparent' }}>
+        <Ionicons name={focused ? on : off} size={21} color={color as string} />
       </View>
     );
   };
 
-/** Le chat est accessible depuis l'en-tête ; cinq destinations restent en bas. */
+/**
+ * Barre d'onglets de la maquette Figma : Accueil · Planning · Messages · Profil.
+ * Les notifications s'ouvrent depuis la cloche de l'en-tête.
+ */
 export default function TabsLayout() {
   const c = useColors();
   const { user } = useAuth();
@@ -29,25 +33,32 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: c.primary,
         tabBarInactiveTintColor: c.subtle,
-        tabBarStyle: { backgroundColor: c.surface, borderTopColor: c.border, paddingTop: 4 },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
+        tabBarStyle: { backgroundColor: c.surface, borderTopColor: c.border, paddingTop: 6 },
+        tabBarLabelStyle: { fontSize: 11, fontFamily: fonts.semibold, marginTop: 2 },
         sceneStyle: { backgroundColor: c.bg },
       }}
     >
       <Tabs.Screen name="accueil" options={{ title: 'Accueil', tabBarIcon: icon('home', 'home-outline') }} />
       <Tabs.Screen name="trouver-prof" options={{ href: user?.role === 'STUDENT' ? '/trouver-prof' : null, title: 'Trouver un prof', tabBarLabel: 'Un prof', tabBarAccessibilityLabel: 'Trouver un prof', tabBarIcon: icon('search', 'search-outline') }} />
-      <Tabs.Screen name="dispos" options={{ title: 'Dispos', tabBarIcon: icon('calendar', 'calendar-outline') }} />
+      <Tabs.Screen name="planning" options={{ title: "Planning", tabBarIcon: icon("calendar", "calendar-outline") }} />
+      <Tabs.Screen name="dispos" options={{ href: null, title: 'Disponibilités', tabBarLabel: 'Planning', tabBarIcon: icon('calendar', 'calendar-outline') }} />
       <Tabs.Screen
-        name="notifications"
+        name="messagerie"
         options={{
-          title: 'Notifications',
-          tabBarLabel: 'Alertes',
-          tabBarIcon: icon('notifications', 'notifications-outline'),
+          title: 'Messages',
+          tabBarIcon: icon('chatbubble', 'chatbubble-outline'),
           tabBarBadge: unread > 99 ? '99+' : unread > 0 ? unread : undefined,
-          tabBarBadgeStyle: { backgroundColor: c.notification, color: c.onNotification, fontWeight: '700' },
+          tabBarBadgeStyle: { backgroundColor: c.notification, color: c.onNotification, fontFamily: fonts.bold, fontSize: 10 },
+        }}
+        listeners={{
+          // La messagerie est un écran de la pile (avec retour) : l'onglet l'ouvre par-dessus.
+          tabPress: (e) => {
+            e.preventDefault();
+            router.push('/messages');
+          },
         }}
       />
-      <Tabs.Screen name="profil" options={{ title: 'Profil', tabBarIcon: icon('person-circle', 'person-circle-outline') }} />
+      <Tabs.Screen name="profil" options={{ title: 'Profil', tabBarIcon: icon('person', 'person-outline') }} />
     </Tabs>
   );
 }

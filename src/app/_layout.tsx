@@ -1,4 +1,6 @@
+import { AppearanceProvider } from '@/lib/appearance';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
 import { router, Stack } from 'expo-router';
@@ -11,15 +13,19 @@ import { StartupScreen } from '@/components/StartupScreen';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { CHAT_KEY } from '@/lib/chat';
 import '@/lib/push'; // enregistre le handler d'affichage des notifications
+import { fontFiles } from '@/theme';
 
 const LAST_HANDLED_KEY = 'esupadom.lastHandledNotification';
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 function AppContent() {
   const { isLoading } = useAuth();
+  // Plus Jakarta Sans (design system Figma) ; en cas d'échec, police système.
+  const [fontsLoaded, fontError] = useFonts(fontFiles);
+  const fontsReady = fontsLoaded || !!fontError;
   const [logoReady, setLogoReady] = useState(false);
   const [introFinished, setIntroFinished] = useState(false);
-  const showStartup = isLoading || !introFinished;
+  const showStartup = isLoading || !introFinished || !fontsReady;
 
   const onLogoReady = useCallback(() => {
     SplashScreen.hide();
@@ -86,9 +92,9 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
+      <AppearanceProvider><AuthProvider>
         <AppContent />
-      </AuthProvider>
+      </AuthProvider></AppearanceProvider>
     </QueryClientProvider>
   );
 }

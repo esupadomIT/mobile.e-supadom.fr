@@ -27,8 +27,64 @@ export function setUnauthorizedHandler(handler: (() => void) | null) {
   onUnauthorized = handler;
 }
 
+/** Paiement enregistré (POST /api/reglements). */
+export interface Reglement {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  subject: string;
+  amount: number;
+  status: 'Pending' | 'Approved' | string;
+  /** Référence de la transaction (colonne « Référence » du site) */
+  token?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** POST /api/v1/auth/signup (mêmes champs que l'inscription du site). */
+export interface SignupBody {
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  phoneParent?: string;
+  postalCode?: string;
+  city?: string;
+  email: string;
+  emailParent?: string;
+  password: string;
+  classe: number;
+  classeName?: string;
+  matieres: number[];
+  matiereNames?: string;
+}
+
+/** Durées de séance : identifiant stocké en base → heures (comme common/forfaits.ts du backend). */
+export const DURATION_HOURS: Record<string, number> = { '3': 0.5, '1': 1, '4': 1.5, '5': 2 };
+
+/**
+ * « Prof seul » (même règle que le site, T164) : séance tranchée NON par le cron
+ * et moins de 2 min passées ensemble dans la visio.
+ */
+function profSeul(s: { seance_effectuee?: boolean; seance_effectuee_checked_at?: string | null; seance_effectuee_details?: string | null }) {
+  if (s.seance_effectuee !== false || !s.seance_effectuee_checked_at || !s.seance_effectuee_details) return false;
+  try {
+    const m = Number(JSON.parse(s.seance_effectuee_details)?.minutesTogether);
+    return Number.isFinite(m) && m < 2;
+  } catch {
+    return false;
+  }
+}
+
+/** Fin d'une séance à partir de l'identifiant de durée. */
+function endFromDuration(start: string | undefined, duration: unknown): string | null {
+  const hours = DURATION_HOURS[String(duration ?? '')];
+  if (!start || !hours) return null;
+  return new Date(+new Date(start) + hours * 3600_000).toISOString();
+}
+
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public body?: any) {
     super(message);
   }
 }
@@ -53,8 +109,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     let message = 'La demande n’a pas pu aboutir. Merci de réessayer dans quelques instants.';
+    let body: any;
     try {
-      const body = await res.json();
+      body = await res.json();
       // L'API renvoie selon les routes { error }, { message } ou un tableau de messages (validation).
       // Exceptions Nest : { statusCode, error: 'Unauthorized', message: 'Email ou mot de passe incorrect' }
       // → le message métier est dans `message`, `error` n'est que le libellé HTTP.
@@ -64,7 +121,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     } catch {
       // corps non JSON : message par défaut
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, body);
   }
 
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
@@ -83,6 +140,14 @@ export const api = {
     request<TokenResponse>('/v1/auth/google', { method: 'POST', body: JSON.stringify({ idToken }) }),
   forgotPassword: (email: string) =>
     request<{ message: string }>('/v1/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  /** Inscription élève depuis l'app (sans reCAPTCHA) : un e-mail d'activation est envoyé. */
+  signupStudent: (body: SignupBody) =>
+    request<{ message?: string }>('/v1/auth/signup', { method: 'POST', body: JSON.stringify(body) }),
+  /** Candidature professeur (multipart, CV obligatoire) : même route que le formulaire du site. */
+  postuler: (body: FormData) => request<{ success: boolean; candidatureId?: number }>('/postuler', { method: 'POST', body }),
+  /** Historique des paiements de l'élève (et de son parent), du plus récent au plus ancien. */
+  reglements: (email: string) =>
+    request<{ paiements: Reglement[]; count: number }>('/reglements', { method: 'POST', body: JSON.stringify({ email }) }),
   me: () => request<User>('/v1/auth/me'),
 
   /** Séances de l'élève ou du prof entre deux dates (annulées exclues). */
@@ -103,13 +168,21 @@ export const api = {
         return {
           id: s.id,
           start: s.dateTime ?? s.date,
-          end: s.endDate ?? null,
+          end: s.endDate ?? endFromDuration(s.dateTime ?? s.date, s.duration),
           subject: s.subject ?? s.matiere ?? 'Séance',
           meetLink: link(s.google_meet_link),
           withWhom: instructor
             ? students.map((st) => `${st.firstName ?? ''} ${st.lastName ? `${st.lastName[0]}.` : ''}`.trim()).join(', ') || 'Élève'
             : s.instructor?.fullName ?? `${s.instructor?.firstName ?? ''} ${s.instructor?.lastName ?? ''}`.trim(),
           partnerId: instructor ? (students.length === 1 ? students[0].id : null) : s.instructor?.id ?? null,
+          level: instructor
+            ? (students[0] as { userClasses?: { classe?: { nom?: string } }[] } | undefined)?.userClasses?.[0]?.classe?.nom ?? null
+            : Array.isArray(s.levels) && s.levels.length ? s.levels.join(', ') : null,
+          status: typeof s.status === 'string' ? s.status : null,
+          // Présence vérifiée par le cron Google Meet (comme le site) : null tant que non tranché.
+          effectuee: s.seance_effectuee_checked_at ? s.seance_effectuee === true : null,
+          profSeul: s.video_prof_seul === true || profSeul(s),
+          recordLink: link(s.google_meet_record),
         };
       })
       .sort((a, b) => +new Date(a.start) - +new Date(b.start));
@@ -211,6 +284,15 @@ export const api = {
   createAlmaPayment: (body: Record<string, unknown>) =>
     request<{ id: string; url: string }>('/paiement/alma/createPaymentFormule', { method: 'POST', body: JSON.stringify(body) }),
   /** Profs de l'élève (2 derniers mois), à prévenir de la recharge. */
+  /**
+   * Réservation d'un cours par l'élève sur les disponibilités d'un prof qui le suit déjà
+   * (POST /seance/v1/reserver). 409 = avertissements à confirmer (`force`), 400 type « balance » = solde insuffisant.
+   */
+  reserveSeance: (body: { instructorId: number; date: string; horaire: string; duration: string; force?: boolean }) =>
+    request<{ success: boolean; message: string; data: { id: number; date: string; horaire: string } }>('/seance/v1/reserver', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   rechargeInstructors: async (email: string) =>
     (await request<{ instructors: Partner[] }>(`/auth/user/instructors?email=${encodeURIComponent(email)}`)).instructors ?? [],
   notifyInstructors: (orderID: string, selectedInstructors: number[], email: string) =>

@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Link, Redirect } from 'expo-router';
+import { Link, Redirect, router } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import {
   Image,
@@ -16,10 +16,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GoogleButton, googleEnabled } from '@/components/GoogleButton';
 import { Divider, Field, Notice, PrimaryButton, type TextInputRef } from '@/components/ui';
-import { SITE_URL } from '@/config';
 import { useAuth } from '@/lib/auth';
-import { radius, shadow, useColors } from '@/theme';
+import { fonts, radius, typography as t, useColors } from '@/theme';
 
+const CONTACT_EMAIL = 'contact@e-supadom.fr';
+
+/** Maquette Figma « 🔑 Sign up - Log in » : écran « 01 Connexion ». */
 export default function LoginScreen() {
   const { signIn, signInWithGoogle, token } = useAuth();
   const c = useColors();
@@ -49,7 +51,7 @@ export default function LoginScreen() {
   if (token) return <Redirect href="/accueil" />;
 
   const onSubmit = async () => {
-    if (!email.trim() || !password) return setError('Saisis ton adresse e-mail et ton mot de passe.');
+    if (!email.trim() || !password) return setError('Saisissez votre adresse e-mail et votre mot de passe.');
     setError(null);
     setSubmitting(true);
     try {
@@ -62,32 +64,31 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.flex, { backgroundColor: c.bg }]}>
+    <SafeAreaView style={[styles.flex, { backgroundColor: c.surface }]}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.brand}>
-            <View style={styles.logoBox}>
-              <Image source={require('../../assets/logo-transparent.png')} style={styles.logo} resizeMode="contain" />
-            </View>
-            <View style={[styles.hero, { backgroundColor: c.primary }]}>
-              <View pointerEvents="none" style={styles.heroRing} />
-              <View style={styles.eyebrow}>
-                <Ionicons name="school-outline" size={16} color="#6EE7B7" />
-                <Text style={styles.eyebrowText}>TON ESPACE DE RÉUSSITE</Text>
-              </View>
-              <Text style={styles.title}>Un pas de plus{ '\n' }vers <Text style={{ color: '#6EE7B7' }}>tes objectifs.</Text></Text>
-              <Text style={styles.subtitle}>Tes cours, tes échanges et tes progrès.{ '\n' }Tout commence ici.</Text>
-            </View>
+          <View style={styles.top}>
+            <Image source={require('../../assets/logo-header.png')} style={styles.logo} resizeMode="contain" accessibilityLabel="e-Supadom" />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Aide et contact"
+              onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)}
+              hitSlop={10}
+            >
+              <Ionicons name="help-circle-outline" size={24} color={c.link} />
+            </Pressable>
           </View>
 
-          <View style={[styles.card, shadow, { backgroundColor: c.surface, borderColor: c.border }]}>
-            <View style={{ gap: 5, marginBottom: 6 }}>
-              <Text style={[styles.formTitle, { color: c.text }]}>Heureux de te retrouver</Text>
-              <Text style={{ color: c.muted, fontSize: 14 }}>Connecte-toi à ton espace personnel.</Text>
-            </View>
+          <View style={{ gap: 6 }}>
+            <Text style={[styles.eyebrow, { color: c.primary }]}>VOTRE ESPACE COURS</Text>
+            <Text style={[t.title, { color: c.text }]}>Ravi de vous revoir</Text>
+            <Text style={[t.body, { color: c.muted }]}>Retrouvez vos cours et vos échanges, simplement.</Text>
+          </View>
+
+          <View style={{ gap: 16 }}>
             <Field
               label="Adresse e-mail"
-              placeholder="prenom.nom@exemple.fr"
+              placeholder="nom@exemple.fr"
               autoCapitalize="none"
               autoCorrect={false}
               autoComplete="email"
@@ -112,17 +113,20 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               onSubmitEditing={onSubmit}
               right={
-                <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={10}>
-                  <Text style={{ color: c.primary, fontWeight: '600', fontSize: 14 }}>
-                    {showPassword ? 'Masquer' : 'Afficher'}
-                  </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={10}
+                >
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={21} color={c.link} />
                 </Pressable>
               }
             />
 
             <Link href={{ pathname: '/forgot-password', params: { email } }} asChild>
               <Pressable hitSlop={8} style={styles.forgot}>
-                <Text style={{ color: c.primary, fontWeight: '600', fontSize: 14 }}>Mot de passe oublié ?</Text>
+                <Text style={[t.caption, { color: c.link, fontSize: 13 }]}>Mot de passe oublié ?</Text>
               </Pressable>
             </Link>
 
@@ -138,11 +142,32 @@ export default function LoginScreen() {
             )}
           </View>
 
-          <Pressable onPress={() => Linking.openURL(`${SITE_URL}/signup`)} style={styles.footer} hitSlop={8}>
-            <Text style={{ color: c.muted, fontSize: 14, textAlign: 'center' }}>
-              Pas encore de compte ? <Text style={{ color: c.primary, fontWeight: '700' }}>Inscris-toi sur e-supadom.fr</Text>
-            </Text>
+          <View style={{ gap: 6, alignItems: 'center' }}>
+            <Text style={[t.cardText, { color: c.muted }]}>Élève ou parent, pas encore de compte ?</Text>
+            <Pressable accessibilityRole="link" onPress={() => router.push('/inscription')} hitSlop={8}>
+              <Text style={[t.caption, styles.underline, { color: c.link, fontSize: 13 }]}>Créer un compte</Text>
+            </Pressable>
+          </View>
+
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.push('/inscription/professeur')}
+            style={({ pressed }) => [styles.teacher, { backgroundColor: pressed ? c.accent : c.accentSoft }]}
+          >
+            <Ionicons name="school-outline" size={20} color={c.onAccent} />
+            <View style={{ flex: 1 }}>
+              <Text style={[t.cardTitle, { color: c.text, fontSize: 14 }]}>Devenir professeur</Text>
+              <Text style={[t.captionRegular, { color: c.onAccent }]}>Déposer ma candidature</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={18} color={c.onAccent} />
           </Pressable>
+
+          <View style={[styles.footer, { borderTopColor: c.border }]}>
+            <Text style={[t.captionRegular, { color: c.muted }]}>Une question ? Nous sommes là pour vous.</Text>
+            <Pressable accessibilityRole="link" onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)} hitSlop={8}>
+              <Text style={[t.caption, { color: c.link, fontSize: 13 }]}>Aide & contact</Text>
+            </Pressable>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -151,18 +176,12 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, padding: 20, paddingTop: 12, paddingBottom: 32, gap: 20, width: '100%', maxWidth: 540, alignSelf: 'center' },
-  brand: { gap: 20 },
-  logoBox: { alignSelf: 'flex-start', height: 46, paddingHorizontal: 10, justifyContent: 'center', overflow: 'hidden' },
-  logo: { width: 136, height: 68 },
-  hero: { borderRadius: 28, padding: 24, paddingBottom: 36, gap: 18, overflow: 'hidden' },
-  heroRing: { position: 'absolute', width: 210, height: 210, borderRadius: 105, borderWidth: 35, borderColor: 'rgba(255,255,255,0.07)', right: -100, top: -65 },
-  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  eyebrowText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1.4 },
-  title: { color: '#fff', fontSize: 32, lineHeight: 39, fontWeight: '800', letterSpacing: -1.2 },
-  subtitle: { color: '#E4EFFF', fontSize: 14, lineHeight: 22 },
-  formTitle: { fontSize: 22, fontWeight: '800', letterSpacing: -0.6 },
-  card: { borderRadius: radius.lg, borderWidth: 1, padding: 22, gap: 18, marginTop: -36, marginHorizontal: 8 },
-  forgot: { alignSelf: 'flex-end', marginTop: -6 },
-  footer: { paddingVertical: 8 },
+  scroll: { flexGrow: 1, padding: 20, paddingTop: 12, paddingBottom: 28, gap: 24, width: '100%', maxWidth: 540, alignSelf: 'center' },
+  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  logo: { width: 140, height: 38 },
+  eyebrow: { fontFamily: fonts.bold, fontSize: 11, letterSpacing: 1.2 },
+  forgot: { alignSelf: 'flex-end', marginTop: -4 },
+  underline: { textDecorationLine: 'underline' },
+  teacher: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: radius.md, padding: 16 },
+  footer: { alignItems: 'center', gap: 8, paddingTop: 20, borderTopWidth: StyleSheet.hairlineWidth * 2 },
 });

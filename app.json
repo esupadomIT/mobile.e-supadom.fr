@@ -7,14 +7,16 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "fr.esupadom.mobile"
+      "supportsTablet": false,
+      "bundleIdentifier": "fr.esupadom.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
@@ -38,12 +40,17 @@
       [
         "expo-notifications",
         {
-          "color": "#2F80ED"
+          "color": "#2F80ED",
+          "sounds": [
+            "./assets/sounds/notif.wav"
+          ],
+          "icon": "./assets/notification-icon.png"
         }
       ],
       "expo-web-browser",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      "expo-status-bar"
     ],
     "scheme": [
       "esupadom",

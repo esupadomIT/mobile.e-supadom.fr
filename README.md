@@ -19,10 +19,69 @@ Expo Router et TanStack Query. Backend : `admin.mobile.e-supadom.fr`
 Ces fonctions sont présentes dans le code ; leur validation sur appareil et les
 services externes restent distincts de cette mise à jour documentaire.
 
-## Démarrage et configuration
+## Commandes
 
-`npm install`, puis `npm run start` (Expo). Créer au besoin un fichier `.env`
-local : aucun `.env.example` n'est actuellement fourni dans ce dépôt.
+### Lancer le projet en local (Expo)
+
+```bash
+npm install
+cp .env.example .env          # API et site de test par défaut
+npx expo start                # QR code : build de dev installé sur le téléphone
+npx expo start --go --tunnel  # sans build : Expo Go (pas de push, Google limité)
+npx expo start -c             # idem en vidant le cache (après ajout/déplacement d'écrans)
+```
+
+- `--tunnel` : le téléphone n'a pas besoin d'être sur le même Wi-Fi que le PC.
+- Dans le terminal Expo : `r` recharge l'app, `j` ouvre le débogueur.
+- `expo-dev-client` est installé : `npx expo start` attend un **build de développement**
+  (voir ci-dessous) ; utiliser `--go` pour ouvrir le projet dans Expo Go.
+
+### Builds EAS
+
+Prérequis une fois : `npm install -g eas-cli` puis `eas login` (compte `guetat`).
+
+| Profil | Usage | API | Commande |
+|---|---|---|---|
+| `development` | Build de dev (rechargement à chaud, push réels) | test | `eas build -p android --profile development` / `-p ios` |
+| `preview` | APK Android à installer par lien | test | `eas build -p android --profile preview` |
+| `staging` | Build de store sur l'environnement de test (Play test interne, TestFlight) | test | `eas build -p android --profile staging` / `-p ios` |
+| `production` | Build de store en production | prod | `eas build -p android --profile production` / `-p ios` |
+
+```bash
+# Version de dev, puis lancer Metro pour s'y connecter
+eas build -p android --profile development
+eas build -p ios --profile development      # iPhone enregistré avant : eas device:create
+npx expo start
+
+# Version de test à partager
+eas build -p android --profile preview      # APK, lien d'installation direct
+
+# Version de test dans les stores (numéro de build incrémenté automatiquement)
+eas build -p android --profile staging --auto-submit   # Google Play, piste interne
+eas build -p ios --profile staging --auto-submit       # TestFlight
+
+# Version de production
+eas build -p android --profile production
+eas build -p ios --profile production
+eas submit -p android --profile production --latest  # Play, piste interne
+eas submit -p ios --latest                           # App Store Connect / TestFlight
+```
+
+- Le premier build iOS se lance depuis un terminal : connexion Apple (2FA), création
+  du certificat, du profil et de la clé push (répondre « Yes »). Il faut un accès
+  **Admin** à l'équipe Apple Developer et un accès App Store Connect pour `submit`.
+- Son, icônes, plugins natifs : refaire un build ; `eas update` ne suffit pas.
+- Suivre les builds : `eas build:list` ou https://expo.dev.
+
+### Vérifications avant commit
+
+```bash
+npm run typecheck
+npm run lint
+npx expo-doctor
+```
+
+## Configuration
 
 | Variable publique | Usage / défaut |
 |---|---|
@@ -151,9 +210,9 @@ interne protégée. Voir le DEPLOIEMENT.md du backend pour cette configuration.
 ## Builds
 
 `app.json` contient déjà l'identifiant de projet EAS et les identifiants natifs.
-`eas.json` définit development et preview vers l'API de test, production vers
-l'API de production. Ces profils ne fixent pas `EXPO_PUBLIC_FILES_URL` : vérifier
-cette valeur pour les fichiers et liens du site dans les builds de test.
+`eas.json` définit development, preview et staging vers l'API et le site de test,
+production vers ceux de production (`EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_FILES_URL`
+et les client IDs Google sont fixés par profil). Commandes : voir « Commandes ».
 
 Utiliser un build installé sur un téléphone pour valider Google et les push.
 Les identifiants FCM/APNs doivent être configurés dans EAS ; la présence du

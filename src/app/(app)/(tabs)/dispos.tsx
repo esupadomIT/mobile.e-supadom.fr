@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BrandHeader, ScreenHeader } from '@/components/ScreenHeader';
@@ -41,8 +41,8 @@ function InstructorDispos({ userId }: { userId: number }) {
   });
 
   // Créneaux à venir, groupés par jour (heure de Paris)
+  const [now] = useState(() => Date.now());
   const days = useMemo(() => {
-    const now = Date.now();
     const groups = new Map<string, Disponibilite[]>();
     for (const d of data ?? []) {
       if (+new Date(d.endDate) <= now) continue;
@@ -50,7 +50,7 @@ function InstructorDispos({ userId }: { userId: number }) {
       groups.set(day, [...(groups.get(day) ?? []), d]);
     }
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [data]);
+  }, [data, now]);
 
   const confirmDelete = (d: Disponibilite) =>
     Alert.alert('Supprimer ce créneau ?', `${formatIsoDay(isoDay(new Date(d.startDate)))} · ${hhmm(new Date(d.startDate))} – ${hhmm(new Date(d.endDate))}`, [
@@ -126,13 +126,12 @@ function StudentDispos() {
   const qc = useQueryClient();
   const { data, isLoading, error, refetch } = useQuery({ queryKey: ['student-availability'], queryFn: api.studentAvailability });
   const { refreshing, onRefresh } = useManualRefresh(() => refetch());
-  const [slots, setSlots] = useState<WeeklySlots>({});
+  const [draft, setSlots] = useState<WeeklySlots | null>(null);
+  const slots = draft ?? data?.slots ?? {};
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
 
-  useEffect(() => {
-    if (data && !dirty) setSlots(data.slots ?? {});
-  }, [data, dirty]);
+
 
   const save = useMutation({
     mutationFn: () => {
@@ -154,7 +153,7 @@ function StudentDispos() {
   const update = (day: string, list: { start: string; end: string }[]) => {
     setDirty(true);
     setMessage(null);
-    setSlots((prev) => ({ ...prev, [day]: list }));
+    setSlots((prev) => ({ ...(prev ?? data?.slots ?? {}), [day]: list }));
   };
 
   const total = Object.values(slots).reduce((n, l) => n + l.length, 0);

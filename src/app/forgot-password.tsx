@@ -1,92 +1,165 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 
-import { Field, Notice, PrimaryButton } from '@/components/ui';
-import { api } from '@/lib/api';
-import { radius, shadow, useColors } from '@/theme';
+import { SignupShell } from '@/components/signup';
+import { Card, Field, PrimaryButton, SecondaryButton } from '@/components/ui';
+import { api, ApiError } from '@/lib/api';
+import { typography as t, useColors } from '@/theme';
 
-/** Mot de passe oublié : l'API envoie le lien de réinitialisation (page du site). */
+/**
+ * Maquettes Figma « 🔐 Mot de passe oublié » : saisie, e-mail invalide, envoi en cours,
+ * « Vérifiez vos e-mails », « L’envoi n’a pas abouti ».
+ * La suite (nouveau mot de passe, lien expiré, mot de passe réinitialisé) se passe
+ * sur la page du site ouverte depuis le lien reçu par e-mail.
+ */
+
+type Phase = 'form' | 'sent' | 'failed';
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
 export default function ForgotPasswordScreen() {
   const c = useColors();
   const params = useLocalSearchParams<{ email?: string }>();
   const [email, setEmail] = useState(params.email ?? '');
+  const [phase, setPhase] = useState<Phase>('form');
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [invalid, setInvalid] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  const onSubmit = async () => {
-    const value = email.trim().toLowerCase();
-    if (!/^\S+@\S+\.\S+$/.test(value)) return setError('Saisis une adresse e-mail valide.');
-    setError(null);
+  const value = email.trim().toLowerCase();
+  const toLogin = () => (router.canGoBack() ? router.back() : router.replace('/login'));
+
+  const send = async () => {
+    if (!EMAIL.test(value)) {
+      setInvalid('Saisissez une adresse complète, par exemple thomas@exemple.fr.');
+      return;
+    }
+    setInvalid(null);
+    setServerError(null);
     setSending(true);
     try {
       await api.forgotPassword(value);
-      setSent(true);
+      setPhase('sent');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Envoi impossible pour le moment.');
+      // Erreur de saisie renvoyée par l'API (400) : on la montre sous le champ.
+      if (e instanceof ApiError && e.status >= 400 && e.status < 500 && e.status !== 429) {
+        setInvalid(e.message);
+        setPhase('form');
+      } else {
+        setServerError(e instanceof Error ? e.message : null);
+        setPhase('failed');
+      }
     } finally {
       setSending(false);
     }
   };
 
-  return (
-    <SafeAreaView style={[styles.flex, { backgroundColor: c.bg }]}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back}>
-            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '600' }}>‹ Retour</Text>
+  const editAddress = () => {
+    setPhase('form');
+    setServerError(null);
+  };
+
+  // ─── « Vérifiez vos e-mails » ──────────────────────────────────────────
+  if (phase === 'sent') {
+    return (
+      <SignupShell
+        icon="mail-outline"
+        eyebrow="RÉCUPÉRER MON ACCÈS"
+        title="Vérifiez vos e-mails"
+        subtitle="Si un compte est associé à cette adresse, vous recevrez un lien de réinitialisation."
+        onBack={toLogin}
+      >
+        <Card tone="info">
+          <Text style={[t.cardTitle, { color: c.text, fontSize: 14 }]}>{value}</Text>
+          <Pressable accessibilityRole="button" onPress={editAddress} hitSlop={8} style={{ alignSelf: 'flex-start' }}>
+            <Text style={[t.caption, { color: c.link, fontSize: 13 }]}>Modifier l’adresse</Text>
           </Pressable>
+        </Card>
+        <Card tone="info">
+          <Text style={[t.cardTitle, { color: c.link, fontSize: 14 }]}>Vous ne trouvez pas l’e-mail ?</Text>
+          <Text style={[t.cardText, { color: c.muted }]}>
+            Vérifiez vos spams ou courriers indésirables et assurez-vous que l’adresse est correcte. Le lien est valable 1 heure.
+          </Text>
+        </Card>
+        <SecondaryButton title="Renvoyer le lien" onPress={send} loading={sending} />
+      </SignupShell>
+    );
+  }
 
-          <View style={styles.head}>
-            <Text style={[styles.title, { color: c.text }]}>Mot de passe oublié</Text>
-            <Text style={[styles.subtitle, { color: c.muted }]}>
-              Indique ton adresse e-mail : tu recevras un lien pour choisir un nouveau mot de passe (valable 1 heure).
-            </Text>
-          </View>
+  // ─── « L’envoi n’a pas abouti » ────────────────────────────────────────
+  if (phase === 'failed') {
+    return (
+      <SignupShell
+        icon="cloud-offline-outline"
+        iconTone="danger"
+        eyebrow="RÉCUPÉRER MON ACCÈS"
+        title="L’envoi n’a pas abouti"
+        subtitle="Un problème de connexion ou de service a empêché le traitement de votre demande."
+        onBack={toLogin}
+      >
+        <Field label="E-mail du compte" value={email} editable={false} />
+        <View style={{ backgroundColor: c.dangerSoft, borderRadius: 12, padding: 14, gap: 4 }}>
+          <Text style={[t.cardTitle, { color: c.danger, fontSize: 14 }]}>Vous pouvez réessayer</Text>
+          <Text style={[t.cardText, { color: c.danger }]}>
+            {serverError && /connexion/i.test(serverError) ? 'Vérifiez votre connexion, puis relancez l’envoi. ' : 'Relancez l’envoi dans quelques instants. '}
+            Votre adresse a été conservée.
+          </Text>
+        </View>
+        <PrimaryButton title="Réessayer" onPress={send} loading={sending} />
+        <Pressable accessibilityRole="button" onPress={editAddress} hitSlop={8} style={{ alignSelf: 'flex-start' }}>
+          <Text style={[t.caption, { color: c.link, fontSize: 13 }]}>Modifier l’adresse</Text>
+        </Pressable>
+      </SignupShell>
+    );
+  }
 
-          <View style={[styles.card, shadow, { backgroundColor: c.surface }]}>
-            {sent ? (
-              <>
-                <Notice kind="success">
-                  Si un compte existe avec {email.trim()}, un e-mail vient de partir. Pense à regarder dans les indésirables.
-                </Notice>
-                <PrimaryButton title="Revenir à la connexion" onPress={() => router.back()} />
-              </>
-            ) : (
-              <>
-                <Field
-                  label="Adresse e-mail"
-                  placeholder="prenom.nom@exemple.fr"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  keyboardType="email-address"
-                  textContentType="emailAddress"
-                  returnKeyType="send"
-                  value={email}
-                  onChangeText={setEmail}
-                  onSubmitEditing={onSubmit}
-                  autoFocus={!email}
-                />
-                {error && <Notice kind="error">{error}</Notice>}
-                <PrimaryButton title="Envoyer le lien" onPress={onSubmit} loading={sending} />
-              </>
-            )}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+  // ─── Saisie / adresse invalide / envoi en cours ────────────────────────
+  return (
+    <SignupShell
+      icon="key-outline"
+      eyebrow="RÉCUPÉRER MON ACCÈS"
+      title="Mot de passe oublié ?"
+      subtitle="Indiquez l’adresse e-mail de votre compte pour demander un lien de réinitialisation."
+      onBack={toLogin}
+    >
+      <Field
+        label="E-mail du compte"
+        placeholder="nom@exemple.fr"
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="email"
+        keyboardType="email-address"
+        textContentType="emailAddress"
+        returnKeyType="send"
+        value={email}
+        onChangeText={(v) => {
+          setEmail(v);
+          if (invalid) setInvalid(null);
+        }}
+        onSubmitEditing={send}
+        editable={!sending}
+        autoFocus={!email}
+        error={invalid}
+      />
+      <PrimaryButton title={sending ? 'Envoi en cours…' : 'Envoyer le lien'} onPress={send} loading={sending} />
+      <Card tone="info">
+        {sending ? (
+          <>
+            <Text style={[t.cardTitle, { color: c.link, fontSize: 14 }]}>Demande en cours de traitement</Text>
+            <Text style={[t.cardText, { color: c.muted }]}>Patientez un instant. Il n’est pas nécessaire de renvoyer votre demande.</Text>
+          </>
+        ) : invalid ? (
+          <>
+            <Text style={[t.cardTitle, { color: c.link, fontSize: 14 }]}>Vérifiez votre saisie</Text>
+            <Text style={[t.cardText, { color: c.muted }]}>Il manque peut-être une partie de votre adresse, par exemple après le point.</Text>
+          </>
+        ) : (
+          <>
+            <Text style={[t.cardTitle, { color: c.link, fontSize: 14 }]}>Retrouvez votre espace en toute simplicité</Text>
+            <Text style={[t.cardText, { color: c.muted }]}>Vous pourrez choisir un nouveau mot de passe depuis le lien reçu par e-mail.</Text>
+          </>
+        )}
+      </Card>
+    </SignupShell>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  scroll: { flexGrow: 1, padding: 20, gap: 20 },
-  back: { alignSelf: 'flex-start', paddingVertical: 4 },
-  head: { gap: 8, marginTop: 12 },
-  title: { fontSize: 26, fontWeight: '800', letterSpacing: -0.3 },
-  subtitle: { fontSize: 15, lineHeight: 21 },
-  card: { borderRadius: radius.lg, padding: 20, gap: 16 },
-});

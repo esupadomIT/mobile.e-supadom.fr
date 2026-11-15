@@ -1,71 +1,105 @@
+import { useAppearance } from '@/lib/appearance';
 import { useColorScheme } from 'react-native';
 
-// Palette du site e-supadom.fr : BLEU #2F80ED (bandeau, liens), VERT #6EE7B7
-// (« Inscription », mots mis en avant), JAUNE #FFD814 (boutons d'action « Nous découvrir »).
+// Design system Figma « e-Supadom » (page 🎨 Design System - Fondation).
+// Variables Figma entre parenthèses : action/primary, surface/card, text/primary…
 const light = {
-  bg: '#F5F8FC',
-  surface: '#FFFFFF',
-  surfaceAlt: '#EDF3FA',
-  text: '#152B46',
-  muted: '#60738B',
-  subtle: '#76869A',
-  border: '#DFE8F2',
-  primary: '#2F80ED',
-  primaryPressed: '#2468C4',
-  primarySoft: '#E7F1FF',
-  onPrimary: '#FFFFFF',
-  accent: '#6EE7B7',
-  accentSoft: '#E3FBF2',
-  onAccent: '#145C47',
+  bg: '#F5F8FA', // background/subtle
+  surface: '#FFFFFF', // surface/card
+  surfaceAlt: '#EDF3FA', // surface/info
+  text: '#1B3048', // text/primary
+  muted: '#617185', // text/secondary
+  subtle: '#8695A6',
+  border: '#DCE4EA', // border/default
+  focus: '#2865AB', // border/focus
+  link: '#2865AB', // text/link
+  primary: '#2865AB', // action/primary
+  primaryPressed: '#1F5290',
+  primarySoft: '#EDF3FA',
+  onPrimary: '#FFFFFF', // text/inverse
+  accent: '#76C8AA', // brand/mint
+  accentSoft: '#E3F5EE',
+  onAccent: '#1D5C46',
   yellow: '#FFD814',
   yellowPressed: '#F0C800',
   onYellow: '#1B2433',
-  bubbleMine: '#2F80ED',
+  bubbleMine: '#EDF3FA',
   bubbleOther: '#FFFFFF',
-  danger: '#D92D20',
-  notification: '#E41E3F',
+  danger: '#B53E3E', // text/danger
+  notification: '#D64545',
   onNotification: '#FFFFFF',
-  dangerSoft: '#FEF0EF',
+  dangerSoft: '#FFF1F0', // surface/danger
   overlay: 'rgba(12, 28, 49, 0.42)',
 };
 
 const dark: typeof light = {
-  bg: '#0D1117',
-  surface: '#161B24',
-  surfaceAlt: '#1D2430',
-  text: '#EEF2F7',
-  muted: '#9AA7B8',
-  subtle: '#6B7789',
-  border: '#262E3B',
-  primary: '#4D94F5',
-  primaryPressed: '#3A7FDE',
-  primarySoft: '#16294A',
+  bg: '#0D1624',
+  surface: '#152235',
+  surfaceAlt: '#1B2D45',
+  text: '#EAF1FA',
+  muted: '#ADBED3',
+  subtle: '#7F92A9',
+  border: '#354B65',
+  focus: '#8FB9FF',
+  link: '#8FB9FF',
+  primary: '#2865AB',
+  primaryPressed: '#1F5290',
+  primarySoft: '#1B2D45',
   onPrimary: '#FFFFFF',
-  accent: '#6EE7B7',
-  accentSoft: '#B5EBD8',
-  onAccent: '#0B3B2C',
+  accent: '#76C8AA',
+  accentSoft: '#173A31',
+  onAccent: '#BDEBD9',
   yellow: '#FFD814',
   yellowPressed: '#F0C800',
   onYellow: '#1B2433',
-  bubbleMine: '#2F80ED',
-  bubbleOther: '#1F2633',
-  danger: '#F97066',
-  notification: '#E41E3F',
+  bubbleMine: '#1B2D45',
+  bubbleOther: '#152235',
+  danger: '#FFAAA8',
+  notification: '#E25C5C',
   onNotification: '#FFFFFF',
-  dangerSoft: '#3A1D1B',
+  dangerSoft: '#3D222B',
   overlay: 'rgba(0, 0, 0, 0.3)',
 };
 
 export type Colors = typeof light;
 
 export function useColors(): Colors {
-  return useColorScheme() === 'dark' ? dark : light;
+  const system = useColorScheme(); const { mode } = useAppearance();
+  return (mode === 'system' ? system : mode) === 'dark' ? dark : light;
 }
 
-/** Couleurs d'avatar (initiales), choisies de façon stable à partir de l'id. */
-export const AVATAR_COLORS = ['#2F80ED', '#0EA5A4', '#7C5CFF', '#F97316', '#E11D74', '#16A34A', '#0284C7', '#B45309'];
+/** Plus Jakarta Sans (chargée dans src/app/_layout.tsx depuis assets/fonts). */
+export const fonts = {
+  regular: 'PlusJakartaSans_400Regular',
+  medium: 'PlusJakartaSans_500Medium',
+  semibold: 'PlusJakartaSans_600SemiBold',
+  bold: 'PlusJakartaSans_700Bold',
+  extrabold: 'PlusJakartaSans_800ExtraBold',
+} as const;
 
-export const radius = { sm: 12, md: 16, lg: 24, pill: 999 };
+export const fontFiles = {
+  [fonts.regular]: require('../assets/fonts/PlusJakartaSans_400Regular.ttf'),
+  [fonts.medium]: require('../assets/fonts/PlusJakartaSans_500Medium.ttf'),
+  [fonts.semibold]: require('../assets/fonts/PlusJakartaSans_600SemiBold.ttf'),
+  [fonts.bold]: require('../assets/fonts/PlusJakartaSans_700Bold.ttf'),
+  [fonts.extrabold]: require('../assets/fonts/PlusJakartaSans_800ExtraBold.ttf'),
+};
+
+/** Styles de texte du design system (taille, police, interligne 1.5). */
+export const typography = {
+  title: { fontFamily: fonts.bold, fontSize: 27, lineHeight: 40 },
+  body: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 21 },
+  cardTitle: { fontFamily: fonts.bold, fontSize: 15, lineHeight: 22 },
+  cardText: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 20 },
+  button: { fontFamily: fonts.bold, fontSize: 14, lineHeight: 20 },
+  caption: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 16 },
+  captionRegular: { fontFamily: fonts.regular, fontSize: 11, lineHeight: 16 },
+} as const;
+
+/** Couleurs d'avatar (initiales), choisies de façon stable à partir de l'id. */
+export const AVATAR_COLORS = ['#2865AB', '#0EA5A4', '#7C5CFF', '#F97316', '#E11D74', '#16A34A', '#0284C7', '#B45309'];
+
+export const radius = { sm: 12, md: 14, lg: 24, pill: 999 };
 
 /** Ombre douce (iOS) / élévation (Android). */
 export const shadow = {

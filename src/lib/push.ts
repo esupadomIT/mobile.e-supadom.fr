@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { api, ApiError } from '@/lib/api';
@@ -32,11 +33,15 @@ export async function registerForPush(): Promise<string | null> {
   if (!Device.isDevice) return null;
 
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('messages', {
+    // Le son d'un canal Android ne peut plus changer une fois créé : nouveau canal
+    // « messages-v2 » avec le son de l'app (assets/sounds/notif.wav, déclaré dans app.json).
+    await Notifications.setNotificationChannelAsync('messages-v2', {
       name: 'Messages',
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: AndroidImportance.HIGH,
+      sound: 'notif.wav',
       vibrationPattern: [0, 250, 250, 250],
     });
+    await Notifications.deleteNotificationChannelAsync('messages').catch(() => undefined);
   }
 
   const { status: existing } = await Notifications.getPermissionsAsync();

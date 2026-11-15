@@ -1,106 +1,88 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Avatar } from '@/components/Avatar';
-import { ScreenHeader } from '@/components/ScreenHeader';
+import { AppHeader } from '@/components/AppHeader';
+import { Card, PrimaryButton } from '@/components/ui';
 import { LIST_POLL_MS } from '@/config';
 import { useManualRefresh } from '@/hooks/useManualRefresh';
 import { useAuth } from '@/lib/auth';
 import { sortedConversations, startableContacts, useChat } from '@/lib/chat';
-import { formatWhen, fullName, messagePreview, roleLabel } from '@/lib/format';
-import { radius, useColors } from '@/theme';
+import { conversationWhen, fullName, messagePreview, roleLabel } from '@/lib/format';
+import { fonts, typography as t, useColors } from '@/theme';
 import type { Contact, Conversation } from '@/types';
+
+/** Maquette Figma « 📨 Parcours Messages » → écran « Messages · Clair / Sombre » (53:24382). */
 
 const openChat = (partnerId: number) =>
   router.push({ pathname: '/chat/[partnerId]', params: { partnerId: String(partnerId) } });
 
-const matches = (p: { firstName: string; lastName: string }, q: string) =>
-  !q || fullName(p).toLowerCase().includes(q.trim().toLowerCase());
+type Filter = 'unread' | 'all';
 
 export default function ConversationsScreen() {
   const { user } = useAuth();
   const c = useColors();
   const { data, isLoading, isError, refetch } = useChat(LIST_POLL_MS);
   const { refreshing, onRefresh } = useManualRefresh(() => refetch());
-  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
 
-  const conversations = useMemo(
-    () => sortedConversations(data).filter((conv) => matches(conv.partner, query)),
-    [data, query],
-  );
-  const contacts = useMemo(() => startableContacts(data, user).filter((ct) => matches(ct, query)), [data, user, query]);
+  const all = useMemo(() => sortedConversations(data), [data]);
+  const unreadConversations = useMemo(() => all.filter((conv) => conv.unreadCount > 0), [all]);
+  const conversations = filter === 'unread' ? unreadConversations : all;
+  const contacts = useMemo(() => startableContacts(data, user), [data, user]);
+  const totalUnread = all.reduce((n, conv) => n + conv.unreadCount, 0);
   const isStudent = user?.role === 'STUDENT';
-  const totalUnread = conversations.reduce((n, conv) => n + conv.unreadCount, 0);
+  // « Ouvrir la conversation » : la plus récente non lue, sinon la plus récente.
+  const next = unreadConversations[0] ?? all[0];
 
   const header = (
     <View style={styles.headerBlock}>
-      {contacts.length > 0 && (
-        <View style={styles.contactsBlock}>
-          <Text style={[styles.sectionTitle, { color: c.muted }]}>
-            {isStudent ? 'Écrire à un de tes profs' : 'Écrire à un de tes élèves'}
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.contacts}>
-            {contacts.map((ct) => (
-              <ContactChip key={ct.id} contact={ct} />
-            ))}
-          </ScrollView>
-        </View>
-      )}
+      <Text style={[t.title, { color: c.text }]}>Messages</Text>
+      <Text style={[t.body, { color: c.muted }]}>
+        {isStudent ? 'Vos échanges avec l’équipe pédagogique.' : 'Vos échanges avec vos élèves et leurs parents.'}
+      </Text>
 
-      <View style={styles.listTitleRow}>
-        <Text style={[styles.sectionTitle, { color: c.muted }]}>Conversations</Text>
-        {totalUnread > 0 && (
-          <View style={[styles.badge, { backgroundColor: c.notification }]}>
-            <Text style={[styles.badgeText, { color: c.onNotification }]}>{totalUnread} non lu{totalUnread > 1 ? 's' : ''}</Text>
-          </View>
-        )}
-      </View>
+      <Card tone="info">
+        <Text style={[t.cardTitle, { color: c.text }]}>
+          {filter === 'unread' ? 'Conversations non lues' : 'Toutes les conversations'}
+        </Text>
+        <View style={styles.filters}>
+          <FilterLink label={`Non lus · ${totalUnread}`} active={filter === 'unread'} onPress={() => setFilter('unread')} />
+          <Text style={[t.cardText, { color: c.muted }]}>|</Text>
+          <FilterLink label="Tous les messages" active={filter === 'all'} onPress={() => setFilter('all')} />
+        </View>
+      </Card>
+    </View>
+  );
+
+  const footer = (
+    <View style={styles.footer}>
+      {next ? <PrimaryButton title="Ouvrir la conversation" onPress={() => openChat(next.partner.id)} /> : null}
+      {contacts.length > 0 ? (
+        <View style={styles.contacts}>
+          <Text style={[t.caption, { color: c.muted }]}>
+            {isStudent ? 'ÉCRIRE À UN DE VOS PROFESSEURS' : 'ÉCRIRE À UN DE VOS ÉLÈVES'}
+          </Text>
+          {contacts.map((ct) => (
+            <ContactCard key={ct.id} contact={ct} />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <ScreenHeader
-        title="Messages"
-        subtitle={totalUnread > 0 ? `${totalUnread} message${totalUnread > 1 ? 's' : ''} non lu${totalUnread > 1 ? 's' : ''}` : 'Tes échanges'}
-        right={
-          <Pressable accessibilityRole="button" accessibilityLabel="Retour" onPress={() => router.canGoBack() ? router.back() : router.replace('/accueil')} hitSlop={10} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: c.primarySoft }}>
-            <Ionicons name="arrow-back" size={23} color={c.primary} />
-          </Pressable>
-        }
-      >
-        <View style={[styles.search, { backgroundColor: c.bg, borderColor: c.border }]}>
-          <Ionicons name="search-outline" size={20} color={c.muted} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder={isStudent ? 'Rechercher un prof' : 'Rechercher un élève'}
-            placeholderTextColor={c.muted}
-            style={[styles.searchInput, { color: c.text }]}
-            autoCorrect={false}
-            clearButtonMode="while-editing"
-          />
-        </View>
-      </ScreenHeader>
-
+      <AppHeader />
       {isLoading ? (
         <ActivityIndicator style={styles.center} color={c.primary} />
       ) : isError ? (
-        <Pressable style={styles.center} onPress={() => refetch()}>
-          <Text style={[styles.emptyTitle, { color: c.text }]}>Connexion impossible</Text>
-          <Text style={{ color: c.muted, textAlign: 'center' }}>Touche ici pour réessayer.</Text>
-        </Pressable>
+        <View style={[styles.list, { flex: 1 }]}>
+          <Card onPress={() => refetch()} accessibilityLabel="Réessayer">
+            <Text style={[t.cardTitle, { color: c.text }]}>Connexion impossible</Text>
+            <Text style={[t.cardText, { color: c.muted }]}>Touchez ici pour réessayer.</Text>
+          </Card>
+        </View>
       ) : (
         <FlatList
           data={conversations}
@@ -108,127 +90,86 @@ export default function ConversationsScreen() {
           refreshing={refreshing}
           onRefresh={onRefresh}
           ListHeaderComponent={header}
-          contentContainerStyle={styles.listContent}
+          ListFooterComponent={footer}
+          contentContainerStyle={styles.list}
+          ItemSeparatorComponent={Gap}
           ListEmptyComponent={
-            <View style={[styles.empty, { backgroundColor: c.surface }]}>
-              <View style={[styles.emptyIcon, { backgroundColor: c.primarySoft }]}><Ionicons name="chatbubbles-outline" size={28} color={c.primary} /></View>
-              <Text style={[styles.emptyTitle, { color: c.text }]}>
-                {query ? 'Aucun résultat' : 'Aucune conversation pour l’instant'}
+            <Card>
+              <Text style={[t.cardTitle, { color: c.text }]}>
+                {filter === 'unread' ? 'Aucun message non lu' : 'Aucune conversation pour l’instant'}
               </Text>
-              <Text style={{ color: c.muted, textAlign: 'center', lineHeight: 20 }}>
-                {query
-                  ? 'Essaie un autre prénom ou nom.'
-                  : `Tes échanges avec ${isStudent ? 'tes profs' : 'tes élèves'} apparaîtront ici.`}
+              <Text style={[t.cardText, { color: c.muted }]}>
+                {filter === 'unread'
+                  ? 'Vous êtes à jour.'
+                  : `Vos échanges avec ${isStudent ? 'vos professeurs' : 'vos élèves'} apparaîtront ici.`}
               </Text>
-            </View>
+            </Card>
           }
-          renderItem={({ item, index }) => (
-            <ConversationRow
-              conversation={item}
-              myId={user?.id}
-              first={index === 0}
-              last={index === conversations.length - 1}
-            />
-          )}
+          renderItem={({ item }) => <ConversationCard conversation={item} myId={user?.id} />}
         />
       )}
     </View>
   );
 }
 
-function ConversationRow({ conversation, myId, first, last }: { conversation: Conversation; myId?: number; first: boolean; last: boolean }) {
+function Gap() {
+  return <View style={{ height: 16 }} />;
+}
+
+function FilterLink({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const c = useColors();
+  return (
+    <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress} hitSlop={8}>
+      <Text style={[t.cardText, { color: active ? c.link : c.muted }, active && styles.active]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/** Carte « Dr. Marc Lambert · 16:42 » : nom · heure, aperçu, mention NOUVEAU si non lu. */
+function ConversationCard({ conversation, myId }: { conversation: Conversation; myId?: number }) {
   const c = useColors();
   const { partner, lastMessage, unreadCount } = conversation;
   const unread = unreadCount > 0;
   const preview = lastMessage
-    ? `${lastMessage.senderId === myId ? 'Toi : ' : ''}${messagePreview(lastMessage)}`
+    ? `${lastMessage.senderId === myId ? 'Vous : ' : ''}${messagePreview(lastMessage)}`
     : 'Nouvelle conversation';
+  const title = lastMessage ? `${fullName(partner)} · ${conversationWhen(lastMessage.createdAt)}` : fullName(partner);
 
   return (
-    <Pressable
-      onPress={() => openChat(partner.id)}
-      style={({ pressed }) => [
-        styles.row,
-        {
-          backgroundColor: pressed ? c.surfaceAlt : c.surface,
-          borderTopLeftRadius: first ? radius.lg : 0,
-          borderTopRightRadius: first ? radius.lg : 0,
-          borderBottomLeftRadius: last ? radius.lg : 0,
-          borderBottomRightRadius: last ? radius.lg : 0,
-        },
-      ]}
-    >
-      <Avatar person={partner} size={50} />
-      <View style={[styles.rowBody, !last && { borderBottomColor: c.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
-        <View style={styles.rowLine}>
-          <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
-            {fullName(partner)}
-          </Text>
-          {lastMessage && (
-            <Text style={{ color: unread ? c.primary : c.subtle, fontSize: 12, fontWeight: unread ? '700' : '400' }}>
-              {formatWhen(lastMessage.createdAt)}
-            </Text>
-          )}
-        </View>
-        <View style={styles.rowLine}>
-          <Text
-            numberOfLines={1}
-            style={[styles.preview, { color: unread ? c.text : c.muted, fontWeight: unread ? '600' : '400' }]}
-          >
-            {preview}
-          </Text>
-          {unread && (
-            <View style={[styles.count, { backgroundColor: c.notification }]}>
-              <Text style={styles.badgeText}>{unreadCount}</Text>
-            </View>
-          )}
-        </View>
-        <Text style={{ color: c.subtle, fontSize: 12 }}>{roleLabel(partner.role)}</Text>
-      </View>
-    </Pressable>
+    <Card onPress={() => openChat(partner.id)} accessibilityLabel={`Conversation avec ${fullName(partner)}${unread ? `, ${unreadCount} non lus` : ''}`}>
+      <Text style={[t.cardTitle, { color: c.text }]} numberOfLines={1}>
+        {title}
+      </Text>
+      <Text style={[t.cardText, { color: c.muted }]} numberOfLines={1}>
+        {preview}
+      </Text>
+      {unread ? (
+        <Text style={[t.caption, { color: c.link }]}>
+          NOUVEAU · {unreadCount > 1 ? `${unreadCount} messages` : roleLabel(partner.role)}
+        </Text>
+      ) : null}
+    </Card>
   );
 }
 
-function ContactChip({ contact }: { contact: Contact }) {
+function ContactCard({ contact }: { contact: Contact }) {
   const c = useColors();
   return (
-    <Pressable
-      onPress={() => openChat(contact.id)}
-      style={({ pressed }) => [styles.chip, { backgroundColor: pressed ? c.surfaceAlt : c.surface }]}
-    >
-      <Avatar person={contact} size={52} />
-      <Text style={[styles.chipName, { color: c.text }]} numberOfLines={1}>
-        {contact.firstName}
+    <Card onPress={() => openChat(contact.id)} accessibilityLabel={`Écrire à ${fullName(contact)}`}>
+      <Text style={[t.cardTitle, { color: c.text }]} numberOfLines={1}>
+        {fullName(contact)}
       </Text>
-      <View style={[styles.write, { backgroundColor: c.accentSoft }]}>
-        <Text style={{ color: c.onAccent, fontSize: 12, fontWeight: '700' }}>Écrire</Text>
-      </View>
-    </Pressable>
+      <Text style={[t.cardText, { color: c.muted }]}>{roleLabel(contact.role)} · Démarrer une conversation</Text>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 6 },
-  listContent: { paddingHorizontal: 20, paddingBottom: 32 },
-  headerBlock: { gap: 18, paddingTop: 18, paddingBottom: 10 },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: radius.md, borderWidth: 1, paddingHorizontal: 16, minHeight: 52 },
-  searchInput: { flex: 1, paddingVertical: 14, fontSize: 15 },
-  contactsBlock: { gap: 10 },
-  contacts: { gap: 10, paddingRight: 8 },
-  chip: { width: 96, alignItems: 'center', gap: 8, paddingVertical: 16, borderRadius: radius.lg },
-  write: { borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3 },
-  chipName: { fontSize: 13, fontWeight: '600', maxWidth: 80 },
-  listTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
-  badge: { borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3 },
-  badgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  row: { flexDirection: 'row', alignItems: 'center', paddingLeft: 14, gap: 12 },
-  rowBody: { flex: 1, gap: 5, paddingVertical: 18, paddingRight: 16 },
-  rowLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  name: { fontSize: 16, fontWeight: '700', flexShrink: 1 },
-  preview: { fontSize: 14, flex: 1 },
-  count: { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' },
-  empty: { alignItems: 'center', gap: 8, padding: 28, borderRadius: radius.lg },
-  emptyIcon: { width: 64, height: 64, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  emptyTitle: { fontSize: 17, fontWeight: '700', textAlign: 'center' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  list: { padding: 24, paddingBottom: 40 },
+  headerBlock: { gap: 16, marginBottom: 16 },
+  filters: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  active: { fontFamily: fonts.semibold },
+  footer: { gap: 16, marginTop: 16 },
+  contacts: { gap: 12, marginTop: 8 },
 });

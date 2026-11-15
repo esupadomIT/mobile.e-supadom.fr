@@ -1,6 +1,8 @@
+import { PasswordSection } from '@/components/PasswordSection';
+import { AppHeader } from '@/components/AppHeader';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Chip, Section, SelectField } from '@/components/forms';
@@ -51,12 +53,6 @@ function validDob(f: Form) {
   return date.getUTCDate() === d && date.getUTCMonth() === m - 1 && y > 1900 && date < new Date();
 }
 
-const PASSWORD_ERRORS: Record<string, string> = {
-  'Incorrect current password': 'Mot de passe actuel incorrect.',
-  'Passwords do not match': 'Les deux mots de passe ne correspondent pas.',
-  'Password must be at least 8 characters': 'Le mot de passe doit contenir au moins 8 caractères.',
-};
-
 /** Modifier mon profil (élève ou prof), sans passer par le site. */
 export default function EditProfileScreen() {
   const c = useColors();
@@ -71,13 +67,11 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
 
-  useEffect(() => {
-    if (full && !form) {
+  if (full && !form) {
       setForm(toForm(full));
       setClasseId(String(full.userClasses?.[0]?.classe?.id ?? ''));
       setMatieres((full.matieres ?? []).map((m) => m.matiere.id));
-    }
-  }, [full, form]);
+  }
 
   const classes = useQuery({ queryKey: ['classes'], queryFn: api.classes, enabled: !isInstructor, staleTime: 3600_000 });
   const classeMatieres = useQuery({
@@ -155,7 +149,7 @@ export default function EditProfileScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Modifier mon profil' }} />
+      <Stack.Screen options={{ headerShown: false }} /><AppHeader />
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
         {isLoading || !form ? (
           <View style={styles.center}>
@@ -252,53 +246,8 @@ export default function EditProfileScreen() {
   );
 }
 
-function PasswordSection({ userId, social, email }: { userId?: number; social: boolean; email: string }) {
-  const [current, setCurrent] = useState('');
-  const [next, setNext] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
-
-  if (social) {
-    return (
-      <Section title="Mot de passe" subtitle="Vous vous connectez avec Google : pour créer un mot de passe, utilisez « Mot de passe oublié ».">
-        <PrimaryButton title="Recevoir un lien par e-mail" onPress={() => router.push({ pathname: '/forgot-password', params: { email } })} />
-      </Section>
-    );
-  }
-
-  const submit = async () => {
-    if (!userId) return;
-    if (next.length < 8) return setNotice({ kind: 'error', text: PASSWORD_ERRORS['Password must be at least 8 characters'] });
-    if (next !== confirm) return setNotice({ kind: 'error', text: PASSWORD_ERRORS['Passwords do not match'] });
-    setBusy(true);
-    try {
-      await api.updatePassword({ id: userId, currentPassword: current, newPassword: next, confirmNewPassword: confirm });
-      setCurrent('');
-      setNext('');
-      setConfirm('');
-      setNotice({ kind: 'success', text: 'Mot de passe modifié.' });
-    } catch (e) {
-      const msg = (e as Error).message;
-      setNotice({ kind: 'error', text: PASSWORD_ERRORS[msg] ?? msg });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Section title="Mot de passe">
-      <Field label="Mot de passe actuel" value={current} onChangeText={setCurrent} secureTextEntry autoComplete="current-password" />
-      <Field label="Nouveau mot de passe (8 caractères min.)" value={next} onChangeText={setNext} secureTextEntry autoComplete="new-password" />
-      <Field label="Confirmer le nouveau mot de passe" value={confirm} onChangeText={setConfirm} secureTextEntry autoComplete="new-password" />
-      {notice ? <Notice kind={notice.kind}>{notice.text}</Notice> : null}
-      <PrimaryButton title="Changer le mot de passe" onPress={submit} loading={busy} disabled={!current || !next || !confirm} />
-    </Section>
-  );
-}
-
 const styles = StyleSheet.create({
-  body: { padding: 16, gap: 14, paddingBottom: 48 },
+  body: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 20, gap: 14, paddingBottom: 48 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   label: { fontSize: 13, fontWeight: '600' },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

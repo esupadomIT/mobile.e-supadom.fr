@@ -3,15 +3,13 @@ import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Avatar } from '@/components/Avatar';
-import { BrandHeader, ScreenHeader } from '@/components/ScreenHeader';
-import { YellowButton } from '@/components/ui';
+import { AppHeader } from '@/components/AppHeader';
+import { Card, PrimaryButton, SecondaryButton } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
-import { roleLabel } from '@/lib/format';
 import { useFullUser, useMe } from '@/lib/home';
-import { radius, shadow, useColors } from '@/theme';
+import { fonts, typography as t, useColors } from '@/theme';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+/** Maquette Figma « 🎭 Profil » : Profil élève / Profil professeur (clair et sombre). */
 
 const CONTACT_PHONE = '+33187667787';
 const CONTACT_EMAIL = 'contact@e-supadom.fr';
@@ -27,148 +25,114 @@ export default function ProfileScreen() {
   const isInstructor = person.role === 'INSTRUCTOR';
   const isStudent = person.role === 'STUDENT' || person.role === 'USER';
   const classes = (me?.userClasses ?? []).map((uc) => uc.classe.nom).filter(Boolean).join(', ');
-  const matieres = [...new Set((full?.matieres ?? []).map((m) => m.matiere.nom))].join(', ');
+  const matieres = [...new Set((full?.matieres ?? []).map((m) => m.matiere.nom))].join(' · ');
   const hours = typeof me?.totalHours === 'number' ? me.totalHours : null;
+  const contactLine = [me?.phone, me?.city].filter(Boolean).join(' · ');
 
   const confirmSignOut = () =>
-    Alert.alert('Se déconnecter ?', 'Tu ne recevras plus les notifications sur ce téléphone.', [
+    Alert.alert('Se déconnecter ?', 'Vous ne recevrez plus les notifications sur ce téléphone.', [
       { text: 'Annuler', style: 'cancel' },
       { text: 'Se déconnecter', style: 'destructive', onPress: () => void signOut() },
     ]);
 
+  const openHelp = () =>
+    Alert.alert('Aide & contact', 'Notre équipe vous répond du lundi au samedi.', [
+      { text: 'Appeler e-Supadom', onPress: () => Linking.openURL(`tel:${CONTACT_PHONE}`) },
+      { text: 'Écrire au support', onPress: () => Linking.openURL(`mailto:${CONTACT_EMAIL}`) },
+      { text: 'Fermer', style: 'cancel' },
+    ]);
+
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <BrandHeader title="Profil" />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 32 }}>
-        <ScreenHeader embedded title="Mon profil" subtitle={roleLabel(person.role)} />
-
-        <View style={styles.body}>
-          <View style={[styles.card, shadow, styles.identity, { backgroundColor: c.surface }]}>
-            <Avatar person={{ id: person.id, firstName: person.firstName, lastName: person.lastName, role: person.role, profilePicture: person.profilePicture }} size={76} />
-            <Text style={[styles.name, { color: c.text }]}>
-              {person.firstName} {person.lastName}
-            </Text>
-            <View style={styles.badges}>
-              <View style={[styles.badge, { backgroundColor: c.primarySoft }]}>
-                <Text style={{ color: c.primary, fontWeight: '700', fontSize: 12 }}>{roleLabel(person.role)}</Text>
-              </View>
-              {me?.reference ? (
-                <View style={[styles.badge, { backgroundColor: c.accentSoft }]}>
-                  <Text style={{ color: c.onAccent, fontWeight: '700', fontSize: 12 }}>Réf. {me.reference}</Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
-
-          {isStudent ? (
-            <View style={[styles.card, shadow, styles.balance, { backgroundColor: c.primary }]}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.85)', fontWeight: '600' }}>Mon solde</Text>
-                <Text style={{ color: '#fff', fontSize: 28, fontWeight: '800' }}>
-                  {hours !== null ? `${hours.toFixed(1).replace('.', ',').replace(',0', '')} h` : '—'}
-                </Text>
-                <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>de cours disponibles</Text>
-              </View>
-              <YellowButton title="Recharger" small onPress={() => router.push('/recharge')} />
-            </View>
-          ) : null}
-
-          {isInstructor ? (
-            <Group title="Mon enseignement">
-              <InfoRow icon="school-outline" label="Classes" value={classes || 'Aucune classe'} multiline />
-              <InfoRow icon="book-outline" label="Matières" value={matieres || 'Aucune matière'} multiline />
-            </Group>
-          ) : null}
-
-          <Group title="Mes informations">
-            <InfoRow icon="mail-outline" label="E-mail" value={person.email} />
-            {me?.phone ? <InfoRow icon="call-outline" label="Téléphone" value={me.phone} /> : null}
-            {me?.city ? <InfoRow icon="location-outline" label="Ville" value={me.city} /> : null}
-            {isStudent && classes ? <InfoRow icon="school-outline" label="Classe" value={classes} /> : null}
-            {isStudent && matieres ? <InfoRow icon="book-outline" label="Matières" value={matieres} multiline /> : null}
-          </Group>
-
-          <Group title="Compte">
-            <LinkRow icon="create-outline" label="Modifier mon profil" onPress={() => router.push('/profil-modifier')} />
-            <LinkRow
-              icon="calendar-outline"
-              label={isInstructor ? 'Mes disponibilités' : 'Mes disponibilités de la semaine'}
-              onPress={() => router.push('/dispos')}
-            />
-            {isStudent ? <LinkRow icon="card-outline" label="Recharger mon compte" onPress={() => router.push('/recharge')} /> : null}
-          </Group>
-
-          <Group title="Aide">
-            <LinkRow icon="call-outline" label="Appeler e-Supadom" onPress={() => Linking.openURL(`tel:${CONTACT_PHONE}`)} />
-            <LinkRow icon="mail-outline" label="Écrire au support" onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)} />
-          </Group>
-
-          <Pressable
-            onPress={confirmSignOut}
-            style={({ pressed }) => [styles.logout, { backgroundColor: pressed ? c.dangerSoft : c.surface, borderColor: c.border }]}
-          >
-            <Ionicons name="log-out-outline" size={20} color={c.danger} />
-            <Text style={{ color: c.danger, fontWeight: '700', fontSize: 16 }}>Se déconnecter</Text>
-          </Pressable>
-
-          <Text style={[styles.version, { color: c.subtle }]}>e-Supadom · version {Constants.expoConfig?.version ?? '1.0.0'}</Text>
+      <AppHeader showBack={false} />
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
+        <View style={{ gap: 4 }}>
+          <Text style={[t.title, { color: c.text }]}>{isInstructor ? 'Profil professeur' : 'Profil élève'}</Text>
+          <Text style={[t.body, { color: c.muted }]}>Votre espace personnel, simplement.</Text>
         </View>
+
+        {/* Identité */}
+        <Card tone="info">
+          <Text style={[t.cardTitle, { color: c.text }]}>
+            {person.firstName} {person.lastName}
+          </Text>
+          {(isInstructor ? matieres : classes) ? (
+            <Text style={[t.cardText, { color: c.muted }]} numberOfLines={2}>
+              {isInstructor ? matieres : classes}
+            </Text>
+          ) : null}
+          <Ionicons name="person-outline" size={18} color={c.primary} style={{ marginTop: 4 }} />
+          <Text style={[t.captionRegular, { color: c.link }]}>
+            {me?.reference ? `Réf. ${me.reference} · ` : ''}
+            {isInstructor ? 'Professeur' : 'Élève'}
+          </Text>
+        </Card>
+
+        {/* Solde (élève) */}
+        {isStudent ? (
+          <Card onPress={() => router.push('/recharge')} accessibilityLabel="Recharger mon compte">
+            <Text style={[t.cardTitle, { color: c.text }]}>Mon solde d’heures</Text>
+            <View style={styles.balanceRow}>
+              <Text style={[styles.balance, { color: c.text }]}>
+                {hours !== null ? `${hours.toFixed(1).replace('.', ',').replace(',0', '')} h` : '—'}
+              </Text>
+              <Text style={[t.cardText, { color: c.muted, flex: 1 }]}>de cours disponibles</Text>
+              <Text style={[t.caption, { color: c.link }]}>Recharger</Text>
+              <Ionicons name="arrow-forward" size={15} color={c.link} />
+            </View>
+          </Card>
+        ) : null}
+
+        {/* Enseignement (prof) */}
+        {isInstructor ? (
+          <Card>
+            <Text style={[t.cardTitle, { color: c.text }]}>Mon enseignement</Text>
+            <Text style={[t.cardText, { color: c.muted }]}>{classes || 'Aucune classe renseignée'}</Text>
+            <Text style={[t.cardText, { color: c.muted }]}>{matieres || 'Aucune matière renseignée'}</Text>
+          </Card>
+        ) : null}
+
+        {/* Coordonnées */}
+        <Card>
+          <Text style={[t.cardTitle, { color: c.text }]}>Mes coordonnées</Text>
+          <Text style={[t.cardText, { color: c.muted }]} >
+            {person.email}
+          </Text>
+          {contactLine ? <Text style={[t.cardText, { color: c.muted }]}>{contactLine}</Text> : null}
+        </Card>
+
+        <View style={{ gap: 12, marginTop: 4 }}>
+          <PrimaryButton title="Modifier mes informations" onPress={() => router.push('/profil-modifier')} />
+          <SecondaryButton
+            title={isInstructor ? 'Mes disponibilités' : 'Mes disponibilités de la semaine'}
+            onPress={() => router.push('/dispos')}
+          />
+        </View>
+
+        {isStudent ? <SecondaryButton title="Mes paiements" onPress={() => router.push('/paiements')} /> : null}
+        <SecondaryButton title="Réglages & sécurité" onPress={() => router.push('/reglages')} />
+        <View style={styles.links}>
+          <Pressable accessibilityRole="button" onPress={openHelp} hitSlop={8}>
+            <Text style={[t.caption, styles.link, { color: c.link }]}>Aide & contact</Text>
+          </Pressable>
+          <Text style={[t.captionRegular, { color: c.subtle }]}>·</Text>
+          <Pressable accessibilityRole="button" onPress={confirmSignOut} hitSlop={8}>
+            <Text style={[t.caption, styles.link, { color: c.link }]}>Se déconnecter</Text>
+          </Pressable>
+        </View>
+
+        <Text style={[t.captionRegular, { color: c.subtle, textAlign: 'center' }]}>
+          e-Supadom · version {Constants.expoConfig?.version ?? '1.0.0'}
+        </Text>
       </ScrollView>
     </View>
   );
 }
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
-  const c = useColors();
-  return (
-    <View style={{ gap: 8 }}>
-      <Text style={[styles.groupTitle, { color: c.muted }]}>{title}</Text>
-      <View style={[styles.card, shadow, { backgroundColor: c.surface, paddingVertical: 4 }]}>{children}</View>
-    </View>
-  );
-}
-
-function InfoRow({ icon, label, value, multiline }: { icon: IconName; label: string; value: string; multiline?: boolean }) {
-  const c = useColors();
-  return (
-    <View style={styles.row}>
-      <View style={[styles.iconBox, { backgroundColor: c.primarySoft }]}>
-        <Ionicons name={icon} size={18} color={c.primary} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: c.muted, fontSize: 12 }}>{label}</Text>
-        <Text style={{ color: c.text, fontSize: 15, fontWeight: '600', lineHeight: 20 }} numberOfLines={multiline ? 4 : 1}>
-          {value}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function LinkRow({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
-  const c = useColors();
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}>
-      <View style={[styles.iconBox, { backgroundColor: c.accentSoft }]}>
-        <Ionicons name={icon} size={18} color={c.onAccent} />
-      </View>
-      <Text style={{ flex: 1, color: c.text, fontSize: 15, fontWeight: '600' }}>{label}</Text>
-      <Ionicons name="chevron-forward" size={18} color={c.subtle} />
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  body: { padding: 20, gap: 24 },
-  card: { borderRadius: radius.lg, padding: 20 },
-  identity: { alignItems: 'center', gap: 12, paddingVertical: 28 },
-  balance: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  name: { fontSize: 24, fontWeight: '800', letterSpacing: -0.6, textAlign: 'center' },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
-  badge: { borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
-  groupTitle: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginLeft: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
-  iconBox: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  logout: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 52, borderRadius: radius.md, borderWidth: 1.5 },
-  version: { textAlign: 'center', fontSize: 12 },
+  content: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 16, paddingTop: 8, paddingBottom: 32, gap: 16 },
+  balanceRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  balance: { fontFamily: fonts.bold, fontSize: 24, lineHeight: 30 },
+  links: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 4 },
+  link: { fontSize: 13 },
 });

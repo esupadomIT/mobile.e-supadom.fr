@@ -9,7 +9,7 @@ import {
   type TextInputProps,
 } from 'react-native';
 
-import { radius, useColors } from '@/theme';
+import { fonts, radius, typography as t, useColors } from '@/theme';
 
 /** Champ de formulaire avec libellé, bordure colorée au focus et action à droite (ex. « Afficher »). */
 export type TextInputRef = ComponentRef<typeof TextInput>;
@@ -21,8 +21,9 @@ export function Field({
   onFocus,
   onBlur,
   ref,
+  error,
   ...props
-}: Omit<TextInputProps, 'ref'> & { label: string; right?: ReactNode; ref?: Ref<TextInputRef> }) {
+}: Omit<TextInputProps, 'ref'> & { label: string; right?: ReactNode; ref?: Ref<TextInputRef>; error?: string | null }) {
     const c = useColors();
     const [focused, setFocused] = useState(false);
     return (
@@ -31,11 +32,14 @@ export function Field({
         <View
           style={[
             styles.inputBox,
-            { backgroundColor: focused ? c.surface : c.bg, borderColor: focused ? c.primary : c.border },
+            error
+              ? { backgroundColor: c.dangerSoft, borderColor: c.danger }
+              : { backgroundColor: focused ? c.surface : c.bg, borderColor: focused ? c.primary : c.border },
           ]}
         >
           <TextInput
             ref={ref}
+            accessibilityLabel={label}
             placeholderTextColor={c.subtle}
             style={[styles.input, { color: c.text }, style]}
             onFocus={(e) => {
@@ -50,6 +54,7 @@ export function Field({
           />
           {right}
         </View>
+        {error ? <Text style={{ color: c.danger, fontSize: 12, lineHeight: 17 }}>{error}</Text> : null}
       </View>
     );
 }
@@ -60,11 +65,13 @@ export function PrimaryButton({ title, onPress, loading, disabled }: { title: st
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: !!off, busy: !!loading }}
       onPress={onPress}
       disabled={off}
       style={({ pressed }) => [
         styles.button,
-        { backgroundColor: pressed ? c.primaryPressed : c.primary, opacity: off && !loading ? 0.5 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
+        { backgroundColor: pressed ? c.primaryPressed : c.primary, borderColor: c.focus, opacity: off && !loading ? 0.5 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
       ]}
     >
       {loading ? <ActivityIndicator color={c.onPrimary} /> : <Text style={[styles.buttonText, { color: c.onPrimary }]}>{title}</Text>}
@@ -94,6 +101,9 @@ export function SecondaryButton({ title, onPress, icon, loading, disabled }: { t
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{disabled: !!(disabled || loading), busy: !!loading}}
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.button,
@@ -106,7 +116,7 @@ export function SecondaryButton({ title, onPress, icon, loading, disabled }: { t
       ) : (
         <>
           {icon}
-          <Text style={[styles.buttonText, { color: c.text }]}>{title}</Text>
+          <Text style={[styles.buttonText, { color: c.link }]}>{title}</Text>
         </>
       )}
     </Pressable>
@@ -129,22 +139,44 @@ export function Notice({ kind, children }: { kind: 'error' | 'success'; children
   const c = useColors();
   const error = kind === 'error';
   return (
-    <View style={[styles.notice, { backgroundColor: error ? c.dangerSoft : c.primarySoft }]}>
-      <Text style={{ color: error ? c.danger : c.primary, fontSize: 14, lineHeight: 20 }}>{children}</Text>
+    <View accessibilityLiveRegion="polite" style={[styles.notice, { backgroundColor: error ? c.dangerSoft : c.primarySoft }]}>
+      <Text style={{ color: error ? c.danger : c.link, fontSize: 14, lineHeight: 20 }}>{children}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   field: { gap: 8 },
-  label: { fontSize: 13, fontWeight: '600' },
+  label: { fontSize: 13, fontFamily: fonts.semibold },
   inputBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 16, minHeight: 56 },
-  input: { flex: 1, paddingVertical: 16, fontSize: 16 },
-  button: { minHeight: 56, paddingVertical: 14, paddingHorizontal: 18, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 },
-  secondary: { borderWidth: 1.5 },
+  input: { flex: 1, paddingVertical: 16, fontSize: 16, fontFamily: fonts.regular },
+  button: { minHeight: 52, paddingVertical: 14, paddingHorizontal: 12, borderRadius: radius.sm, borderWidth: 1, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 9 },
+  secondary: { borderWidth: 1 },
   small: { minHeight: 44, paddingVertical: 10, paddingHorizontal: 18 },
-  buttonText: { fontSize: 16, fontWeight: '700' },
+  buttonText: { ...t.button, flexShrink: 1, textAlign: 'center' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 4 },
   line: { flex: 1, height: StyleSheet.hairlineWidth * 2 },
+  card: { borderWidth: 1, borderRadius: radius.md, padding: 16, gap: 8 },
   notice: { borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 12 },
 });
+
+/**
+ * Carte du design system (« Toutes les conversations », messages…) :
+ * fond surface/card (ou surface/info avec `tone="info"`), bordure, rayon 14, padding 16.
+ */
+export function Card({ tone = 'default', onPress, children, accessibilityLabel }: { tone?: 'default' | 'info'; onPress?: () => void; children: ReactNode; accessibilityLabel?: string }) {
+  const c = useColors();
+  const bg = tone === 'info' ? c.surfaceAlt : c.surface;
+  const style = { backgroundColor: bg, borderColor: c.border };
+  if (!onPress) return <View style={[styles.card, style]}>{children}</View>;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      style={({ pressed }) => [styles.card, style, pressed && { backgroundColor: c.surfaceAlt, borderColor: c.focus }]}
+    >
+      {children}
+    </Pressable>
+  );
+}

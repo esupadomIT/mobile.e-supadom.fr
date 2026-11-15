@@ -68,3 +68,20 @@ export function messagePreview(m: Message): string {
 export function fileUrl(url: string): string {
   return /^https?:\/\//.test(url) ? url : `${FILES_URL}${url.startsWith('/') ? '' : '/'}${url}`;
 }
+
+const weekday = new Intl.DateTimeFormat('fr-FR', { weekday: 'long' });
+
+/** Horodatage d'une conversation (maquette) : « 16:42 », « Hier », « Lundi », sinon « 12 oct. ». */
+export function conversationWhen(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return time.format(d);
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return 'Hier';
+  if (now.getTime() - d.getTime() < 6 * 86_400_000) {
+    const w = weekday.format(d);
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }
+  return day.format(d);
+}

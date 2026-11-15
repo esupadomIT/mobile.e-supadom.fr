@@ -19,6 +19,8 @@ export interface User {
   forfait?: string | null;
   /** Solde en heures (élève) */
   totalHours?: number | null;
+  /** Date d'échéance du forfait (chaîne libre, vide si aucune) — affichée comme sur le site */
+  echeanceDate?: string | null;
   userClasses?: { classe: { id: number; nom: string; niveau?: { id: number; nom: string } } }[];
 }
 
@@ -32,6 +34,16 @@ export interface Seance {
   /** Prof (vue élève) ou élèves (vue prof) */
   withWhom: string;
   partnerId: number | null;
+  /** Classe de l'élève (ex. « Terminale »), si connue. */
+  level?: string | null;
+  /** ACTIVE (confirmée), COMPLETED, NO_SHOW… */
+  status?: string | null;
+  /** Séance effectuée selon le cron Google Meet (true/false), null si pas encore vérifiée. */
+  effectuee?: boolean | null;
+  /** Le prof était seul dans la visio (même règle que l'icône orange du site). */
+  profSeul?: boolean;
+  /** Enregistrement Google Meet, s'il existe. */
+  recordLink?: string | null;
 }
 
 /** Correspondant dans le chat (jamais l'objet User complet). */
