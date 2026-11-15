@@ -52,11 +52,19 @@
     "production": {
       "android": {
         "track": "internal"
+      },
+      "ios": {
+        "ascAppId": "6835112691",
+        "appleTeamId": "2MG25GBPJN"
       }
     },
     "staging": {
       "android": {
         "track": "internal"
+      },
+      "ios": {
+        "ascAppId": "6835112691",
+        "appleTeamId": "2MG25GBPJN"
       }
     }
   }
