@@ -168,6 +168,12 @@ export const api = {
     request<TokenResponse>('/v1/auth/google', { method: 'POST', body: JSON.stringify({ idToken }) }),
   forgotPassword: (email: string) =>
     request<{ message: string }>('/v1/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  /** Lien de l'e-mail encore utilisable ? (400 INVALID_TOKEN / SOCIAL_LOGIN_ACCOUNT sinon). Ne consomme pas le jeton. */
+  verifyResetToken: (token: string) =>
+    request<{ valid: true; email: string }>('/v1/auth/reset-password/verify', { method: 'POST', body: JSON.stringify({ token }) }),
+  /** Nouveau mot de passe depuis l'app : renvoie l'adresse du compte pour pré-remplir la connexion. */
+  resetPassword: (token: string, password: string) =>
+    request<{ success: true; email: string }>('/v1/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
   /** Inscription élève depuis l'app (sans reCAPTCHA) : un e-mail d'activation est envoyé. */
   signupStudent: (body: SignupBody) =>
     request<{ message?: string }>('/v1/auth/signup', { method: 'POST', body: JSON.stringify(body) }),

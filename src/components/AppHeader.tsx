@@ -1,8 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BrandLogo } from '@/components/BrandLogo';
 import { LIST_POLL_MS } from '@/config';
 import { useChat } from '@/lib/chat';
 import { useColors } from '@/theme';
@@ -26,12 +27,7 @@ export function AppHeader({ onBack, showBack = true }: { onBack?: () => void; sh
           <Ionicons name="arrow-back" size={19} color={c.link} />
         </Pressable>
       ) : null}
-      <Image
-        source={require('../../assets/logo-header.png')}
-        style={styles.logo}
-        resizeMode="contain"
-        accessibilityLabel="e-Supadom"
-      />
+      <BrandLogo style={styles.logo} />
       <View style={{ flex: 1 }} pointerEvents="none" />
       <Pressable
         accessibilityRole="button"

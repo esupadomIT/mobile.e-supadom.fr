@@ -1,4 +1,5 @@
-import { useState, type ComponentRef, type ReactNode, type Ref } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useState, type ComponentProps, type ComponentRef, type ReactNode, type Ref } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -59,9 +60,40 @@ export function Field({
     );
 }
 
-export function PrimaryButton({ title, onPress, loading, disabled }: { title: string; onPress: () => void; loading?: boolean; disabled?: boolean }) {
+/**
+ * Bouton principal. `icon` : pictogramme Ionicons avant le libellé (flèche « → Envoyer le lien » des maquettes).
+ * `loadingTitle` : pendant le chargement, bouton grisé avec roue + libellé (« Envoi en cours… ») au lieu de la roue seule.
+ */
+export function PrimaryButton({
+  title,
+  onPress,
+  loading,
+  disabled,
+  icon,
+  loadingTitle,
+}: {
+  title: string;
+  onPress: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+  icon?: ComponentProps<typeof Ionicons>['name'];
+  loadingTitle?: string;
+}) {
   const c = useColors();
   const off = disabled || loading;
+  if (loading && loadingTitle) {
+    return (
+      <View
+        accessibilityRole="button"
+        accessibilityLabel={loadingTitle}
+        accessibilityState={{ disabled: true, busy: true }}
+        style={[styles.button, styles.row, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}
+      >
+        <ActivityIndicator color={c.muted} size="small" />
+        <Text style={[styles.buttonText, { color: c.muted }]}>{loadingTitle}</Text>
+      </View>
+    );
+  }
   return (
     <Pressable
       accessibilityRole="button"
@@ -74,7 +106,14 @@ export function PrimaryButton({ title, onPress, loading, disabled }: { title: st
         { backgroundColor: pressed ? c.primaryPressed : c.primary, borderColor: c.focus, opacity: off && !loading ? 0.5 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
       ]}
     >
-      {loading ? <ActivityIndicator color={c.onPrimary} /> : <Text style={[styles.buttonText, { color: c.onPrimary }]}>{title}</Text>}
+      {loading ? (
+        <ActivityIndicator color={c.onPrimary} />
+      ) : (
+        <View style={styles.row}>
+          {icon ? <Ionicons name={icon} size={18} color={c.onPrimary} /> : null}
+          <Text style={[styles.buttonText, { color: c.onPrimary }]}>{title}</Text>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -146,6 +185,7 @@ export function Notice({ kind, children }: { kind: 'error' | 'success'; children
 }
 
 const styles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9 },
   field: { gap: 8 },
   label: { fontSize: 13, fontFamily: fonts.semibold },
   inputBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 16, minHeight: 56 },

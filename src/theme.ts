@@ -63,9 +63,14 @@ const dark: typeof light = {
 
 export type Colors = typeof light;
 
-export function useColors(): Colors {
+/** Mode sombre effectif (réglage de l'app, sinon celui du téléphone). */
+export function useIsDark(): boolean {
   const system = useColorScheme(); const { mode } = useAppearance();
-  return (mode === 'system' ? system : mode) === 'dark' ? dark : light;
+  return (mode === 'system' ? system : mode) === 'dark';
+}
+
+export function useColors(): Colors {
+  return useIsDark() ? dark : light;
 }
 
 /** Plus Jakarta Sans (chargée dans src/app/_layout.tsx depuis assets/fonts). */

@@ -1,8 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Link, Redirect, router } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { Link, Redirect, router, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Image,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -14,8 +13,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandLogo } from '@/components/BrandLogo';
 import { GoogleButton, googleEnabled } from '@/components/GoogleButton';
 import { Divider, Field, Notice, PrimaryButton, type TextInputRef } from '@/components/ui';
+import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fonts, radius, typography as t, useColors } from '@/theme';
 
@@ -25,13 +26,36 @@ const CONTACT_EMAIL = 'contact@e-supadom.fr';
 export default function LoginScreen() {
   const { signIn, signInWithGoogle, token } = useAuth();
   const c = useColors();
+  // Retour depuis « Mot de passe oublié » : adresse pré-remplie (+ reset=1 après réinitialisation).
+  const params = useLocalSearchParams<{ email?: string; reset?: string }>();
   const passwordRef = useRef<TextInputRef>(null);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(params.email ?? '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [resetDone, setResetDone] = useState(params.reset === '1');
+
+  // Nouveaux paramètres reçus (écran déjà monté, retour via dismissTo) : on réinitialise le formulaire.
+  const paramsKey = `${params.email ?? ''}|${params.reset ?? ''}`;
+  const [seenParams, setSeenParams] = useState(paramsKey);
+  if (paramsKey !== seenParams) {
+    setSeenParams(paramsKey);
+    if (params.email) {
+      setEmail(params.email);
+      setPassword('');
+      setError(null);
+      setResetDone(params.reset === '1');
+    }
+  }
+
+  useEffect(() => {
+    if (!params.email) return;
+    // Le clavier s'ouvre directement sur le mot de passe.
+    const timer = setTimeout(() => passwordRef.current?.focus(), 350);
+    return () => clearTimeout(timer);
+  }, [params.email, params.reset]);
 
   const onGoogleToken = useCallback(
     async (idToken: string) => {
@@ -53,11 +77,14 @@ export default function LoginScreen() {
   const onSubmit = async () => {
     if (!email.trim() || !password) return setError('Saisissez votre adresse e-mail et votre mot de passe.');
     setError(null);
+    setResetDone(false);
     setSubmitting(true);
     try {
       await signIn(email.trim().toLowerCase(), password);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Connexion impossible.');
+      // 429 : l'API limite à 5 essais / minute ; le message brut du throttler est en anglais.
+      if (e instanceof ApiError && e.status === 429) setError('Trop de tentatives. Patientez une minute, puis réessayez.');
+      else setError(e instanceof Error ? e.message : 'Connexion impossible.');
     } finally {
       setSubmitting(false);
     }
@@ -68,7 +95,7 @@ export default function LoginScreen() {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.top}>
-            <Image source={require('../../assets/logo-header.png')} style={styles.logo} resizeMode="contain" accessibilityLabel="e-Supadom" />
+            <BrandLogo style={styles.logo} />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Aide et contact"
@@ -130,6 +157,9 @@ export default function LoginScreen() {
               </Pressable>
             </Link>
 
+            {resetDone && !error && (
+              <Notice kind="success">Mot de passe modifié ? Saisissez votre nouveau mot de passe pour vous connecter.</Notice>
+            )}
             {error && <Notice kind="error">{error}</Notice>}
 
             <PrimaryButton title="Se connecter" onPress={onSubmit} loading={submitting} />
