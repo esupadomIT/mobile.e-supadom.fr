@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { ParentHome } from '@/components/ParentHome';
 import { useManualRefresh } from '@/hooks/useManualRefresh';
 import { useAuth } from '@/lib/auth';
 import { sortedConversations, useChat } from '@/lib/chat';
@@ -42,6 +43,9 @@ export default function HomeScreen() {
   const { refreshing, onRefresh } = useManualRefresh(() =>
     Promise.allSettled([me.refetch(), seances.refetch(), chat.refetch()]),
   );
+
+  // Parent / tuteur : accueil dédié (enfants suivis), après les hooks
+  if (user?.role === 'PARENT') return <ParentHome />;
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>

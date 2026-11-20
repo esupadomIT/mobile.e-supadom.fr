@@ -5,8 +5,12 @@ import type {
   ChatData,
   Disponibilite,
   FullUser,
+  ChildLink,
+  ChildOverview,
   Message,
   MessagesPage,
+  ParentOfStudent,
+  ParentRelation,
   Partner,
   Seance,
   StudentAvailability,
@@ -57,6 +61,30 @@ export interface SignupBody {
   classeName?: string;
   matieres: number[];
   matiereNames?: string;
+}
+
+/** POST /api/v1/auth/signup-parent : compte parent / tuteur (ses enfants sont ajoutés après connexion). */
+export interface SignupParentBody {
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  postalCode?: string;
+  city?: string;
+  email: string;
+  password: string;
+}
+
+/** POST /api/v1/parent/children : profil d'un enfant créé par son parent. */
+export interface CreateChildBody {
+  firstName: string;
+  lastName: string;
+  dob?: string;
+  email?: string;
+  classe: number;
+  classeName?: string;
+  matieres: number[];
+  matiereNames?: string;
+  relation: ParentRelation;
 }
 
 /** Durées de séance : identifiant stocké en base → heures (comme common/forfaits.ts du backend). */
@@ -143,6 +171,9 @@ export const api = {
   /** Inscription élève depuis l'app (sans reCAPTCHA) : un e-mail d'activation est envoyé. */
   signupStudent: (body: SignupBody) =>
     request<{ message?: string }>('/v1/auth/signup', { method: 'POST', body: JSON.stringify(body) }),
+  /** Inscription parent / tuteur depuis l'app : un e-mail d'activation est envoyé. */
+  signupParent: (body: SignupParentBody) =>
+    request<{ message?: string }>('/v1/auth/signup-parent', { method: 'POST', body: JSON.stringify(body) }),
   /** Candidature professeur (multipart, CV obligatoire) : même route que le formulaire du site. */
   postuler: (body: FormData) => request<{ success: boolean; candidatureId?: number }>('/postuler', { method: 'POST', body }),
   /** Historique des paiements de l'élève (et de son parent), du plus récent au plus ancien. */
@@ -293,6 +324,28 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  // ─── Rôle Parent / Tuteur ────────────────────────────────────────────────
+
+  /** Enfants suivis (avec prochaine séance) et invitations en attente. */
+  children: async () => (await request<{ children: ChildLink[] }>('/v1/parent/children')).children ?? [],
+  createChild: (body: CreateChildBody) =>
+    request<{ linkId: number; studentId: number; status: 'ACTIVE' }>('/v1/parent/children', { method: 'POST', body: JSON.stringify(body) }),
+  inviteChild: (email: string, relation: ParentRelation) =>
+    request<{ linkId: number; status: 'PENDING'; inviteExpiresAt: string }>('/v1/parent/children/invite', {
+      method: 'POST',
+      body: JSON.stringify({ email, relation }),
+    }),
+  childOverview: (studentId: number) => request<ChildOverview>(`/v1/parent/children/${studentId}`),
+  updateChild: (studentId: number, body: { relation?: ParentRelation; isPayer?: boolean; canBook?: boolean }) =>
+    request<{ id: number }>(`/v1/parent/children/${studentId}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  removeChild: (studentId: number) => request<{ ok: true }>(`/v1/parent/children/${studentId}`, { method: 'DELETE' }),
+  /** Vue élève : parents / tuteurs qui suivent son compte (et demandes en attente). */
+  myParents: async () => (await request<{ parents: ParentOfStudent[] }>('/v1/me/parents')).parents ?? [],
+  answerParentInvite: (linkId: number, accept: boolean) =>
+    request<{ id: number; status: string }>(`/v1/me/parents/${linkId}/${accept ? 'accept' : 'reject'}`, { method: 'POST' }),
+  removeMyParent: (linkId: number) => request<{ ok: true }>(`/v1/me/parents/${linkId}`, { method: 'DELETE' }),
+
   rechargeInstructors: async (email: string) =>
     (await request<{ instructors: Partner[] }>(`/auth/user/instructors?email=${encodeURIComponent(email)}`)).instructors ?? [],
   notifyInstructors: (orderID: string, selectedInstructors: number[], email: string) =>

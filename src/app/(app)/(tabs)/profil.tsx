@@ -4,12 +4,15 @@ import { router } from 'expo-router';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { MyParents } from '@/components/MyParents';
+import { ParentChildren } from '@/components/ParentChildren';
 import { Card, PrimaryButton, SecondaryButton } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { useFullUser, useMe } from '@/lib/home';
+import { activeChildren, useChildren } from '@/lib/parent';
 import { fonts, typography as t, useColors } from '@/theme';
 
-/** Maquette Figma « 🎭 Profil » : Profil élève / Profil professeur (clair et sombre). */
+/** Maquette Figma « 🎭 Profil » : Profil élève / parent / professeur (clair et sombre). */
 
 const CONTACT_PHONE = '+33187667787';
 const CONTACT_EMAIL = 'contact@e-supadom.fr';
@@ -19,15 +22,22 @@ export default function ProfileScreen() {
   const c = useColors();
   const { data: me } = useMe();
   const { data: full } = useFullUser();
+  const children = useChildren((me ?? user)?.role === 'PARENT');
   const person = me ?? user;
   if (!person) return null;
 
   const isInstructor = person.role === 'INSTRUCTOR';
+  const isParent = person.role === 'PARENT';
   const isStudent = person.role === 'STUDENT' || person.role === 'USER';
   const classes = (me?.userClasses ?? []).map((uc) => uc.classe.nom).filter(Boolean).join(', ');
   const matieres = [...new Set((full?.matieres ?? []).map((m) => m.matiere.nom))].join(' · ');
   const hours = typeof me?.totalHours === 'number' ? me.totalHours : null;
   const contactLine = [me?.phone, me?.city].filter(Boolean).join(' · ');
+  // « Responsable de Clara · 1 enfant accompagné » (maquette Profil parent)
+  const kids = activeChildren(children.data);
+  const parentLine = kids.length
+    ? `Responsable de ${kids.map((k) => k.firstName).join(', ')} · ${kids.length} enfant${kids.length > 1 ? 's' : ''} accompagné${kids.length > 1 ? 's' : ''}`
+    : 'Aucun enfant rattaché pour l’instant';
 
   const confirmSignOut = () =>
     Alert.alert('Se déconnecter ?', 'Vous ne recevrez plus les notifications sur ce téléphone.', [
@@ -47,7 +57,7 @@ export default function ProfileScreen() {
       <AppHeader showBack={false} />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
         <View style={{ gap: 4 }}>
-          <Text style={[t.title, { color: c.text }]}>{isInstructor ? 'Profil professeur' : 'Profil élève'}</Text>
+          <Text style={[t.title, { color: c.text }]}>{isInstructor ? 'Profil professeur' : isParent ? 'Profil parent' : 'Profil élève'}</Text>
           <Text style={[t.body, { color: c.muted }]}>Votre espace personnel, simplement.</Text>
         </View>
 
@@ -56,7 +66,11 @@ export default function ProfileScreen() {
           <Text style={[t.cardTitle, { color: c.text }]}>
             {person.firstName} {person.lastName}
           </Text>
-          {(isInstructor ? matieres : classes) ? (
+          {isParent ? (
+            <Text style={[t.cardText, { color: c.muted }]} numberOfLines={2}>
+              {parentLine}
+            </Text>
+          ) : (isInstructor ? matieres : classes) ? (
             <Text style={[t.cardText, { color: c.muted }]} numberOfLines={2}>
               {isInstructor ? matieres : classes}
             </Text>
@@ -64,7 +78,7 @@ export default function ProfileScreen() {
           <Ionicons name="person-outline" size={18} color={c.primary} style={{ marginTop: 4 }} />
           <Text style={[t.captionRegular, { color: c.link }]}>
             {me?.reference ? `Réf. ${me.reference} · ` : ''}
-            {isInstructor ? 'Professeur' : 'Élève'}
+            {isInstructor ? 'Professeur' : isParent ? 'Parent / Tuteur' : 'Élève'}
           </Text>
         </Card>
 
@@ -82,6 +96,12 @@ export default function ProfileScreen() {
             </View>
           </Card>
         ) : null}
+
+        {/* Enfants suivis (parent) */}
+        {isParent ? <ParentChildren /> : null}
+
+        {/* Parents / tuteurs qui suivent le compte (élève) */}
+        {isStudent ? <MyParents /> : null}
 
         {/* Enseignement (prof) */}
         {isInstructor ? (
@@ -103,10 +123,12 @@ export default function ProfileScreen() {
 
         <View style={{ gap: 12, marginTop: 4 }}>
           <PrimaryButton title="Modifier mes informations" onPress={() => router.push('/profil-modifier')} />
-          <SecondaryButton
-            title={isInstructor ? 'Mes disponibilités' : 'Mes disponibilités de la semaine'}
-            onPress={() => router.push('/dispos')}
-          />
+          {isParent ? null : (
+            <SecondaryButton
+              title={isInstructor ? 'Mes disponibilités' : 'Mes disponibilités de la semaine'}
+              onPress={() => router.push('/dispos')}
+            />
+          )}
         </View>
 
         {isStudent ? <SecondaryButton title="Mes paiements" onPress={() => router.push('/paiements')} /> : null}
