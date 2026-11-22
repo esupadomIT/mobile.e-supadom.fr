@@ -3,7 +3,6 @@ import { Link, Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -20,7 +19,6 @@ import { ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fonts, radius, typography as t, useColors } from '@/theme';
 
-const CONTACT_EMAIL = 'contact@e-supadom.fr';
 
 /** Maquette Figma « 🔑 Sign up - Log in » : écran « 01 Connexion ». */
 export default function LoginScreen() {
@@ -99,7 +97,7 @@ export default function LoginScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Aide et contact"
-              onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)}
+              onPress={() => router.push('/aide-contact')}
               hitSlop={10}
             >
               <Ionicons name="help-circle-outline" size={24} color={c.link} />
@@ -194,7 +192,7 @@ export default function LoginScreen() {
 
           <View style={[styles.footer, { borderTopColor: c.border }]}>
             <Text style={[t.captionRegular, { color: c.muted }]}>Une question ? Nous sommes là pour vous.</Text>
-            <Pressable accessibilityRole="link" onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)} hitSlop={8}>
+            <Pressable accessibilityRole="link" onPress={() => router.push('/aide-contact')} hitSlop={8}>
               <Text style={[t.caption, { color: c.link, fontSize: 13 }]}>Aide & contact</Text>
             </Pressable>
           </View>

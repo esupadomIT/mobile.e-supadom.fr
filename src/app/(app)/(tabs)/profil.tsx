@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
 import { MyParents } from '@/components/MyParents';
@@ -14,8 +14,6 @@ import { fonts, typography as t, useColors } from '@/theme';
 
 /** Maquette Figma « 🎭 Profil » : Profil élève / parent / professeur (clair et sombre). */
 
-const CONTACT_PHONE = '+33187667787';
-const CONTACT_EMAIL = 'contact@e-supadom.fr';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -45,12 +43,7 @@ export default function ProfileScreen() {
       { text: 'Se déconnecter', style: 'destructive', onPress: () => void signOut() },
     ]);
 
-  const openHelp = () =>
-    Alert.alert('Aide & contact', 'Notre équipe vous répond du lundi au samedi.', [
-      { text: 'Appeler e-Supadom', onPress: () => Linking.openURL(`tel:${CONTACT_PHONE}`) },
-      { text: 'Écrire au support', onPress: () => Linking.openURL(`mailto:${CONTACT_EMAIL}`) },
-      { text: 'Fermer', style: 'cancel' },
-    ]);
+  const openHelp = () => router.push('/aide-contact');
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>

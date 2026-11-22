@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandLogo } from '@/components/BrandLogo';
@@ -19,7 +19,7 @@ export function HelpFooter() {
   return (
     <View style={[styles.footer, { borderTopColor: c.border }]}>
       <Text style={[t.captionRegular, { color: c.muted }]}>Une question ? Nous sommes là pour vous.</Text>
-      <Pressable accessibilityRole="link" onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)} hitSlop={8}>
+      <Pressable accessibilityRole="link" onPress={() => router.push('/aide-contact')} hitSlop={8}>
         <Text style={[t.caption, { color: c.link, fontSize: 13 }]}>Aide & contact</Text>
       </Pressable>
     </View>
@@ -39,6 +39,7 @@ export function SignupShell({
   onBack,
   backLabel = 'Retour à la connexion',
   hideBack = false,
+  hideHelp = false,
   icon,
   iconTone = 'info',
   children,
@@ -54,6 +55,8 @@ export function SignupShell({
   backLabel?: string;
   /** Écran final sans lien retour (maquette « Mot de passe réinitialisé »). */
   hideBack?: boolean;
+  /** Sans le pied de page « Aide & contact » (écrans de l'aide eux-mêmes). */
+  hideHelp?: boolean;
   children: ReactNode;
 }) {
   const c = useColors();
@@ -105,7 +108,7 @@ export function SignupShell({
 
           {children}
 
-          <HelpFooter />
+          {hideHelp ? null : <HelpFooter />}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

@@ -75,6 +75,17 @@ export interface SignupParentBody {
 }
 
 /** POST /api/v1/parent/children : profil d'un enfant créé par son parent. */
+export interface DevisBody {
+  name: string;
+  email: string;
+  phone?: string;
+  classId: number;
+  className?: string;
+  matieres: number[];
+  matieresNoms?: string[];
+  besoin?: string;
+}
+
 export interface CreateChildBody {
   firstName: string;
   lastName: string;
@@ -178,6 +189,11 @@ export const api = {
   signupStudent: (body: SignupBody) =>
     request<{ message?: string }>('/v1/auth/signup', { method: 'POST', body: JSON.stringify(body) }),
   /** Inscription parent / tuteur depuis l'app : un e-mail d'activation est envoyé. */
+  /** « Rappelez-moi » (écran Aide & contact) : même e-mail que le formulaire du site, sans reCAPTCHA. */
+  rappel: (body: { name: string; phone: string; message?: string }) =>
+    request<{ message?: string }>('/v1/contact/rappel', { method: 'POST', body: JSON.stringify(body) }),
+  /** Demande de devis / cours d'essai offert (écran Aide & contact) : même traitement que le site, sans reCAPTCHA. */
+  devis: (body: DevisBody) => request<{ message?: string }>('/devis/v1/submit', { method: 'POST', body: JSON.stringify(body) }),
   signupParent: (body: SignupParentBody) =>
     request<{ message?: string }>('/v1/auth/signup-parent', { method: 'POST', body: JSON.stringify(body) }),
   /** Candidature professeur (multipart, CV obligatoire) : même route que le formulaire du site. */
