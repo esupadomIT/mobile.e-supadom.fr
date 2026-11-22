@@ -64,7 +64,8 @@ export default function AddChildScreen() {
     setError(null);
     if (mode === 'creer') {
       if (!firstName.trim() || !lastName.trim()) return setError('Renseignez le prénom et le nom de votre enfant.');
-      if (childEmail.trim() && !EMAIL.test(childEmail.trim())) return setError('L’adresse e-mail de l’enfant est invalide.');
+      if (!childEmail.trim()) return setError('Renseignez l’adresse e-mail de votre enfant : il recevra un lien pour activer son compte.');
+      if (!EMAIL.test(childEmail.trim())) return setError('L’adresse e-mail de l’enfant est invalide.');
       if (!classeId) return setError('Choisissez le niveau et la classe.');
       if (matieres.length === 0) return setError('Choisissez au moins une matière.');
     } else if (!EMAIL.test(inviteEmail.trim())) {
@@ -77,14 +78,16 @@ export default function AddChildScreen() {
         await api.createChild({
           firstName: firstName.trim(),
           lastName: lastName.trim(),
-          email: childEmail.trim().toLowerCase() || undefined,
+          email: childEmail.trim().toLowerCase(),
           classe: classeId!,
           classeName: classesOfNiveau.find((cl) => cl.id === classeId)?.nom,
           matieres,
           matiereNames: names.join(', '),
           relation,
         });
-        setDone(`${firstName.trim()} est maintenant rattaché(e) à votre compte.`);
+        setDone(
+          `${firstName.trim()} est maintenant rattaché(e) à votre compte. Un e-mail lui a été envoyé à ${childEmail.trim().toLowerCase()} pour activer son compte : son identifiant élève sera créé à l’activation.`,
+        );
       } else {
         await api.inviteChild(inviteEmail.trim().toLowerCase(), relation);
         setDone('Demande envoyée : l’élève doit l’accepter depuis son application (valable 7 jours).');
@@ -144,7 +147,7 @@ export default function AddChildScreen() {
                 </View>
               </View>
               <Field
-                label="Son adresse e-mail (facultatif)"
+                label="Son adresse e-mail *"
                 placeholder="clara@exemple.fr"
                 keyboardType="email-address"
                 autoCapitalize="none"
