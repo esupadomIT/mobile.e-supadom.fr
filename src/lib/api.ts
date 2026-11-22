@@ -123,8 +123,12 @@ function endFromDuration(start: string | undefined, duration: unknown): string |
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string, public body?: any) {
+  /** Titre court du motif, quand l'API le fournit (ex. paiement : « Paiement refusé par votre banque »). */
+  public title?: string;
+
+  constructor(public status: number, message: string, public body?: any, title?: string) {
     super(message);
+    this.title = title;
   }
 }
 
@@ -141,7 +145,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       },
     });
   } catch {
-    throw new ApiError(0, 'Pas de connexion. Vérifie ton accès à Internet.');
+    throw new ApiError(0, 'Pas de connexion. Vérifie ton accès à Internet.', undefined, 'Pas de connexion');
   }
 
   if (res.status === 401 && authToken) onUnauthorized?.();
@@ -160,7 +164,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     } catch {
       // corps non JSON : message par défaut
     }
-    throw new ApiError(res.status, message, body);
+    const title = typeof body?.title === 'string' ? body.title : undefined;
+    throw new ApiError(res.status, message, body, title);
   }
 
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
