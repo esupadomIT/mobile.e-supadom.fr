@@ -1,6 +1,7 @@
 # Couverture des maquettes Figma — app mobile e-Supadom
 
 Maquettes exportées dans `new_Esup/figma/` (une page Figma = un PDF, variantes claire et sombre).
+Dernier export complet : `figma/_export_figma_2026-11-22/` (22/11/2026). Par rapport au 19/11, seules les pages Aide & contact et Trouver un prof sont nouvelles ; les autres sont inchangées.
 Suffixe `-done` = tous les écrans du PDF existent dans l'app avec des données réelles de l'API.
 Aucune donnée ni confirmation fictive n'est affichée : quand l'API ne fournit pas l'information, l'élément est omis.
 
@@ -22,12 +23,15 @@ Règle retenue : l'app reprend **les mêmes fonctionnalités que le site e-supad
 | `e-Supadom-Mot-de-passe-oublie-done.pdf` | Couvert | `forgot-password` (5 états) | `forgot-password` ; le lien de l'e-mail ouvre `reset-password` sur le site, comme pour le web |
 | `e-Supadom-Paiements-done.pdf` | Couvert | `paiements` (solde, date d'échéance, historique, export du relevé PDF), `recharge` | `mes-reglements` (dont « Export PDF »), `nos-formules`, solde / échéance du menu |
 | `e-Supadom-OTP.pdf` | Hors périmètre | — | Maquette « on hold », absente du site |
+| `_export_figma_2026-11-22/Aide-contact.pdf` | Couvert | `aide-contact` (accueil, Rappelez-moi, demande de devis, confirmation) | formulaire « Rappelez-moi », demande de devis |
+| `_export_figma_2026-11-22/Trouver-un-prof.pdf` | Couvert | `trouver-prof` (`FindTeacherWizard`) | `findTeacher` |
 
-Éléments de maquette volontairement non repris (absents du site) : suivi de plusieurs enfants, « Échange parent–professeur » séparé, carte enregistrée, rémunération et virements prof, « +2 ce mois », notifications de paiement.
+Éléments de maquette volontairement non repris (absents du site) : « Échange parent–professeur » séparé, carte enregistrée, rémunération et virements prof (carte « Rémunération » du profil professeur), « +2 ce mois », notifications de paiement ; dans Aide & contact, la question « cours en visio » et le choix des jours / créneau de rappel du devis, ainsi que l'e-mail et le code postal du formulaire « Rappelez-moi ».
 
 ## Routes ajoutées au backend mobile (admin.mobile.e-supadom.fr)
 
 - `POST /api/v1/auth/signup` : inscription élève depuis l'app, sans reCAPTCHA, 3 essais / min / IP.
+- `POST /api/v1/contact/rappel` et `POST /api/devis/v1/submit` : « Rappelez-moi » et demande de devis depuis l'app, sans reCAPTCHA, 3 essais / min / IP ; mêmes e-mails et enregistrement que les routes du site.
 - `POST /api/seance/v1/reserver` : réservation par l'élève, sur un créneau entièrement inclus dans les disponibilités d'un prof qui lui a déjà donné cours, au moins 2 h à l'avance. Type de cours et matière repris du dernier cours ensemble ; création via les mêmes règles que `seance/create` (conflits, solde, débit, lien Meet, e-mails). 409 = avertissements (férié, vacances, disponibilités élève) confirmables avec `force`.
 
 Tests : `npm test` (77 tests, dont ces deux routes).
