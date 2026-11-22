@@ -1,6 +1,6 @@
 // Modèles renvoyés par l'API admin.mobile.e-supadom.fr (schéma Prisma partagé).
 
-export type Role = 'STUDENT' | 'INSTRUCTOR' | 'ADMIN' | 'COMMERCIAL' | 'CM' | 'USER';
+export type Role = 'STUDENT' | 'INSTRUCTOR' | 'ADMIN' | 'COMMERCIAL' | 'CM' | 'USER' | 'PARENT';
 
 /** GET /api/v1/auth/me */
 export interface User {
@@ -153,4 +153,58 @@ export interface StudentAvailability {
   schoolYear: string;
   schoolYearEnd: string;
   slots: WeeklySlots;
+}
+
+// ─── Rôle Parent / Tuteur (API v1/parent/*, v1/me/parents) ─────────────────
+
+export type ParentRelation = 'MERE' | 'PERE' | 'TUTEUR_LEGAL' | 'AUTRE';
+
+/** Séance d'un enfant vue par le parent (sans lien de visio). */
+export interface ChildSeance {
+  id: number;
+  date: string; // ISO 8601 (début)
+  horaire: string;
+  duration: string;
+  matiere: string;
+  typeForfait?: string | null;
+  instructor: { id: number; name: string } | null;
+}
+
+export interface ChildSummary {
+  firstName: string;
+  lastName: string;
+  profilePicture: string | null;
+  /** null pour un enfant créé sans adresse e-mail */
+  email: string | null;
+  managedByParent: boolean;
+  classe: { id: number; nom: string; niveau: string | null } | null;
+  totalHours: number;
+}
+
+/** GET /api/v1/parent/children → { children } : invitation en attente ou enfant suivi. */
+export type ChildLink =
+  | { linkId: number; studentId: number; status: 'PENDING'; relation: ParentRelation; invitedEmail: string; inviteExpired: boolean }
+  | ({ linkId: number; studentId: number; status: 'ACTIVE'; relation: ParentRelation; isPayer: boolean; canBook: boolean; nextSeance: ChildSeance | null } & ChildSummary);
+
+/** GET /api/v1/parent/children/:studentId */
+export interface ChildOverview {
+  linkId: number;
+  relation: ParentRelation;
+  isPayer: boolean;
+  canBook: boolean;
+  child: ChildSummary;
+  soldesParMatiere: { matiereNom: string; heures: number; heuresAchetees: number }[];
+  upcoming: ChildSeance[];
+  pastSeancesCount: number;
+  teachers: { id: number; name: string; profilePicture: string | null }[];
+}
+
+/** GET /api/v1/me/parents → { parents } (vue élève). */
+export interface ParentOfStudent {
+  linkId: number;
+  status: 'PENDING' | 'ACTIVE';
+  relation: ParentRelation;
+  isPayer: boolean;
+  inviteExpiresAt: string | null;
+  parent: { id: number; name: string; profilePicture: string | null };
 }

@@ -4,14 +4,14 @@ import * as Linking from 'expo-linking';
 import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Chip, Choice, Section, StepBar } from '@/components/forms';
 import { MessagesButton } from '@/components/MessagesButton';
 import { Notice, PrimaryButton, SecondaryButton, YellowButton } from '@/components/ui';
 import { API_URL } from '@/config';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { fullName } from '@/lib/format';
 import { FULL_USER_KEY, ME_KEY } from '@/lib/home';
 import { euros, getDefaultIncludedHolidayIds, getHolidayShortLabel, getSchoolHolidayId, type MatiereChoisie, type ModePaiement } from '@/lib/pricing';
@@ -609,7 +609,12 @@ function StepPaiement({ st, comp, data, back, onDone }: StepProps & { onDone: (d
     try {
       await (comp.isAlma ? payAlma() : payPaypal());
     } catch (e) {
-      setNotice({ kind: 'error', text: (e as Error).message });
+      // Pop-up native avec le vrai motif renvoyé par l'API (carte refusée,
+      // montant non accepté par Alma…) ; le bandeau reste affiché en rappel.
+      const message = (e as Error).message;
+      const title = e instanceof ApiError && e.title ? e.title : 'Paiement non finalisé';
+      setNotice({ kind: 'error', text: message });
+      Alert.alert(title, message, [{ text: 'J’ai compris' }]);
     } finally {
       setBusy(false);
     }

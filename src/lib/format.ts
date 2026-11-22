@@ -37,7 +37,7 @@ export function initials(p: Pick<Partner, 'firstName' | 'lastName'>): string {
 }
 
 export function roleLabel(role: Role): string {
-  return role === 'INSTRUCTOR' ? 'Prof' : role === 'STUDENT' ? 'Élève' : 'e-Supadom';
+  return role === 'INSTRUCTOR' ? 'Prof' : role === 'STUDENT' ? 'Élève' : role === 'PARENT' ? 'Parent' : 'e-Supadom';
 }
 
 /** Texte affichable : les messages types sont en HTML nettoyé côté serveur. */

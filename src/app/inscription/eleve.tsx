@@ -138,9 +138,13 @@ export default function StudentSignupScreen() {
       <SignupShell eyebrow="BIENVENUE CHEZ E-SUPADOM" title="Un compte pour apprendre" subtitle="Choisissez votre rôle." onBack={back} backLabel="Retour">
         <View style={{ gap: 12 }}>
           <RadioRow label="Je suis élève" hint="Je choisis mes matières et mes cours." selected={role === 'eleve'} onPress={() => setRole('eleve')} />
-          <RadioRow label="Je suis parent" hint="Je gère le suivi et les paiements." selected={role === 'parent'} onPress={() => setRole('parent')} />
+          <RadioRow label="Je suis parent / tuteur" hint="Je gère le suivi, le planning et les cours de mes enfants." selected={role === 'parent'} onPress={() => setRole('parent')} />
         </View>
-        <PrimaryButton title={isParent ? 'Continuer comme parent' : 'Continuer comme élève'} onPress={() => go(1)} />
+        <PrimaryButton
+          title={isParent ? 'Continuer comme parent' : 'Continuer comme élève'}
+          // Parent / tuteur : compte PARENT à son nom (enfants ajoutés après connexion)
+          onPress={() => (isParent ? router.push('/inscription/parent') : go(1))}
+        />
         <Pressable accessibilityRole="link" onPress={() => router.replace('/login')} hitSlop={8} style={{ alignSelf: 'center' }}>
           <Text style={[t.cardText, { color: c.muted }]}>
             Déjà inscrit ? <Text style={{ color: c.link, textDecorationLine: 'underline' }}>Se connecter</Text>

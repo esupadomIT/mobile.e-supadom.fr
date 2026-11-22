@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Image, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BrandLogo } from '@/components/BrandLogo';
 import { fonts, radius, typography as t, useColors } from '@/theme';
 
 /** Éléments communs aux parcours d'inscription (maquettes Figma « 🔑 Sign up »). */
@@ -18,7 +19,7 @@ export function HelpFooter() {
   return (
     <View style={[styles.footer, { borderTopColor: c.border }]}>
       <Text style={[t.captionRegular, { color: c.muted }]}>Une question ? Nous sommes là pour vous.</Text>
-      <Pressable accessibilityRole="link" onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)} hitSlop={8}>
+      <Pressable accessibilityRole="link" onPress={() => router.push('/aide-contact')} hitSlop={8}>
         <Text style={[t.caption, { color: c.link, fontSize: 13 }]}>Aide & contact</Text>
       </Pressable>
     </View>
@@ -37,6 +38,8 @@ export function SignupShell({
   eyebrow,
   onBack,
   backLabel = 'Retour à la connexion',
+  hideBack = false,
+  hideHelp = false,
   icon,
   iconTone = 'info',
   children,
@@ -50,6 +53,10 @@ export function SignupShell({
   eyebrow?: string;
   onBack?: () => void;
   backLabel?: string;
+  /** Écran final sans lien retour (maquette « Mot de passe réinitialisé »). */
+  hideBack?: boolean;
+  /** Sans le pied de page « Aide & contact » (écrans de l'aide eux-mêmes). */
+  hideHelp?: boolean;
   children: ReactNode;
 }) {
   const c = useColors();
@@ -58,13 +65,15 @@ export function SignupShell({
     <SafeAreaView style={[styles.flex, { backgroundColor: c.surface }]}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <Pressable accessibilityRole="button" onPress={back} hitSlop={10} style={styles.back}>
-            <Ionicons name="arrow-back" size={16} color={c.link} />
-            <Text style={[t.caption, { color: c.link, fontSize: 13 }]}>{backLabel}</Text>
-          </Pressable>
+          {hideBack ? null : (
+            <Pressable accessibilityRole="button" onPress={back} hitSlop={10} style={styles.back}>
+              <Ionicons name="arrow-back" size={16} color={c.link} />
+              <Text style={[t.caption, { color: c.link, fontSize: 13 }]}>{backLabel}</Text>
+            </Pressable>
+          )}
 
           <View style={styles.brand}>
-            <Image source={require('../../assets/logo-header.png')} style={styles.logo} resizeMode="contain" accessibilityLabel="e-Supadom" />
+            <BrandLogo style={styles.logo} />
             {step && total ? (
               <View style={[styles.stepBadge, { backgroundColor: c.surfaceAlt }]}>
                 <Text style={[t.caption, { color: c.link }]}>
@@ -99,7 +108,7 @@ export function SignupShell({
 
           {children}
 
-          <HelpFooter />
+          {hideHelp ? null : <HelpFooter />}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

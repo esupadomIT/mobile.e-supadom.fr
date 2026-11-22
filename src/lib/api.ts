@@ -5,8 +5,12 @@ import type {
   ChatData,
   Disponibilite,
   FullUser,
+  ChildLink,
+  ChildOverview,
   Message,
   MessagesPage,
+  ParentOfStudent,
+  ParentRelation,
   Partner,
   Seance,
   StudentAvailability,
@@ -59,6 +63,41 @@ export interface SignupBody {
   matiereNames?: string;
 }
 
+/** POST /api/v1/auth/signup-parent : compte parent / tuteur (ses enfants sont ajoutés après connexion). */
+export interface SignupParentBody {
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  postalCode?: string;
+  city?: string;
+  email: string;
+  password: string;
+}
+
+/** POST /api/v1/parent/children : profil d'un enfant créé par son parent. */
+export interface DevisBody {
+  name: string;
+  email: string;
+  phone?: string;
+  classId: number;
+  className?: string;
+  matieres: number[];
+  matieresNoms?: string[];
+  besoin?: string;
+}
+
+export interface CreateChildBody {
+  firstName: string;
+  lastName: string;
+  dob?: string;
+  email?: string;
+  classe: number;
+  classeName?: string;
+  matieres: number[];
+  matiereNames?: string;
+  relation: ParentRelation;
+}
+
 /** Durées de séance : identifiant stocké en base → heures (comme common/forfaits.ts du backend). */
 export const DURATION_HOURS: Record<string, number> = { '3': 0.5, '1': 1, '4': 1.5, '5': 2 };
 
@@ -84,8 +123,12 @@ function endFromDuration(start: string | undefined, duration: unknown): string |
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string, public body?: any) {
+  /** Titre court du motif, quand l'API le fournit (ex. paiement : « Paiement refusé par votre banque »). */
+  public title?: string;
+
+  constructor(public status: number, message: string, public body?: any, title?: string) {
     super(message);
+    this.title = title;
   }
 }
 
@@ -102,7 +145,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       },
     });
   } catch {
-    throw new ApiError(0, 'Pas de connexion. Vérifie ton accès à Internet.');
+    throw new ApiError(0, 'Pas de connexion. Vérifie ton accès à Internet.', undefined, 'Pas de connexion');
   }
 
   if (res.status === 401 && authToken) onUnauthorized?.();
@@ -121,7 +164,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     } catch {
       // corps non JSON : message par défaut
     }
-    throw new ApiError(res.status, message, body);
+    const title = typeof body?.title === 'string' ? body.title : undefined;
+    throw new ApiError(res.status, message, body, title);
   }
 
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
@@ -140,9 +184,23 @@ export const api = {
     request<TokenResponse>('/v1/auth/google', { method: 'POST', body: JSON.stringify({ idToken }) }),
   forgotPassword: (email: string) =>
     request<{ message: string }>('/v1/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  /** Lien de l'e-mail encore utilisable ? (400 INVALID_TOKEN / SOCIAL_LOGIN_ACCOUNT sinon). Ne consomme pas le jeton. */
+  verifyResetToken: (token: string) =>
+    request<{ valid: true; email: string }>('/v1/auth/reset-password/verify', { method: 'POST', body: JSON.stringify({ token }) }),
+  /** Nouveau mot de passe depuis l'app : renvoie l'adresse du compte pour pré-remplir la connexion. */
+  resetPassword: (token: string, password: string) =>
+    request<{ success: true; email: string }>('/v1/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
   /** Inscription élève depuis l'app (sans reCAPTCHA) : un e-mail d'activation est envoyé. */
   signupStudent: (body: SignupBody) =>
     request<{ message?: string }>('/v1/auth/signup', { method: 'POST', body: JSON.stringify(body) }),
+  /** Inscription parent / tuteur depuis l'app : un e-mail d'activation est envoyé. */
+  /** « Rappelez-moi » (écran Aide & contact) : même e-mail que le formulaire du site, sans reCAPTCHA. */
+  rappel: (body: { name: string; phone: string; message?: string }) =>
+    request<{ message?: string }>('/v1/contact/rappel', { method: 'POST', body: JSON.stringify(body) }),
+  /** Demande de devis / cours d'essai offert (écran Aide & contact) : même traitement que le site, sans reCAPTCHA. */
+  devis: (body: DevisBody) => request<{ message?: string }>('/devis/v1/submit', { method: 'POST', body: JSON.stringify(body) }),
+  signupParent: (body: SignupParentBody) =>
+    request<{ message?: string }>('/v1/auth/signup-parent', { method: 'POST', body: JSON.stringify(body) }),
   /** Candidature professeur (multipart, CV obligatoire) : même route que le formulaire du site. */
   postuler: (body: FormData) => request<{ success: boolean; candidatureId?: number }>('/postuler', { method: 'POST', body }),
   /** Historique des paiements de l'élève (et de son parent), du plus récent au plus ancien. */
@@ -293,6 +351,28 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  // ─── Rôle Parent / Tuteur ────────────────────────────────────────────────
+
+  /** Enfants suivis (avec prochaine séance) et invitations en attente. */
+  children: async () => (await request<{ children: ChildLink[] }>('/v1/parent/children')).children ?? [],
+  createChild: (body: CreateChildBody) =>
+    request<{ linkId: number; studentId: number; status: 'ACTIVE' }>('/v1/parent/children', { method: 'POST', body: JSON.stringify(body) }),
+  inviteChild: (email: string, relation: ParentRelation) =>
+    request<{ linkId: number; status: 'PENDING'; inviteExpiresAt: string }>('/v1/parent/children/invite', {
+      method: 'POST',
+      body: JSON.stringify({ email, relation }),
+    }),
+  childOverview: (studentId: number) => request<ChildOverview>(`/v1/parent/children/${studentId}`),
+  updateChild: (studentId: number, body: { relation?: ParentRelation; isPayer?: boolean; canBook?: boolean }) =>
+    request<{ id: number }>(`/v1/parent/children/${studentId}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  removeChild: (studentId: number) => request<{ ok: true }>(`/v1/parent/children/${studentId}`, { method: 'DELETE' }),
+  /** Vue élève : parents / tuteurs qui suivent son compte (et demandes en attente). */
+  myParents: async () => (await request<{ parents: ParentOfStudent[] }>('/v1/me/parents')).parents ?? [],
+  answerParentInvite: (linkId: number, accept: boolean) =>
+    request<{ id: number; status: string }>(`/v1/me/parents/${linkId}/${accept ? 'accept' : 'reject'}`, { method: 'POST' }),
+  removeMyParent: (linkId: number) => request<{ ok: true }>(`/v1/me/parents/${linkId}`, { method: 'DELETE' }),
+
   rechargeInstructors: async (email: string) =>
     (await request<{ instructors: Partner[] }>(`/auth/user/instructors?email=${encodeURIComponent(email)}`)).instructors ?? [],
   notifyInstructors: (orderID: string, selectedInstructors: number[], email: string) =>
