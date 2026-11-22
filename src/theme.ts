@@ -11,10 +11,10 @@ const light = {
   muted: '#617185', // text/secondary
   subtle: '#8695A6',
   border: '#DCE4EA', // border/default
-  focus: '#2865AB', // border/focus
-  link: '#2865AB', // text/link
-  primary: '#2865AB', // action/primary
-  primaryPressed: '#1F5290',
+  focus: '#257DEF', // border/focus
+  link: '#257DEF', // text/link
+  primary: '#257DEF', // action/primary
+  primaryPressed: '#1B66CC',
   primarySoft: '#EDF3FA',
   onPrimary: '#FFFFFF', // text/inverse
   accent: '#76C8AA', // brand/mint
@@ -42,8 +42,8 @@ const dark: typeof light = {
   border: '#354B65',
   focus: '#8FB9FF',
   link: '#8FB9FF',
-  primary: '#2865AB',
-  primaryPressed: '#1F5290',
+  primary: '#257DEF',
+  primaryPressed: '#1B66CC',
   primarySoft: '#1B2D45',
   onPrimary: '#FFFFFF',
   accent: '#76C8AA',
@@ -102,7 +102,7 @@ export const typography = {
 } as const;
 
 /** Couleurs d'avatar (initiales), choisies de façon stable à partir de l'id. */
-export const AVATAR_COLORS = ['#2865AB', '#0EA5A4', '#7C5CFF', '#F97316', '#E11D74', '#16A34A', '#0284C7', '#B45309'];
+export const AVATAR_COLORS = ['#257DEF', '#0EA5A4', '#7C5CFF', '#F97316', '#E11D74', '#16A34A', '#0284C7', '#B45309'];
 
 export const radius = { sm: 12, md: 14, lg: 24, pill: 999 };
 

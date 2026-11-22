@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
   tagline: { color: '#152B46', fontSize: 16, fontWeight: '600', textAlign: 'center' },
   loading: { alignItems: 'center', gap: 12, marginTop: 28 },
   track: { width: 220, height: 5, borderRadius: 3, backgroundColor: '#E7F1FF', overflow: 'hidden' },
-  progress: { width: 80, height: 5, borderRadius: 3, backgroundColor: '#2F80ED' },
+  progress: { width: 80, height: 5, borderRadius: 3, backgroundColor: '#257DEF' },
   loadingText: { color: '#60738B', fontSize: 13 },
   signature: { position: 'absolute', bottom: '8%', alignItems: 'center', gap: 12 },
   dot: { width: 24, height: 4, borderRadius: 2, backgroundColor: '#6EE7B7' },
