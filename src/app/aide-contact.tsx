@@ -5,9 +5,11 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CheckChip, CONTACT_EMAIL, GroupLabel, SignupShell, signupStyles as s } from '@/components/signup';
+import { PhoneField } from '@/components/CountryFields';
 import { Field, Notice, PrimaryButton, SecondaryButton } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { isValidPhone, phoneFromStore, phoneToStore } from '@/lib/country';
 import { radius, typography as t, useColors } from '@/theme';
 
 /**
@@ -34,7 +36,8 @@ export default function AideContactScreen() {
 
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
   const [lastName, setLastName] = useState(user?.lastName ?? '');
-  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [country, setCountry] = useState(() => phoneFromStore(user?.phone).country);
+  const [phone, setPhone] = useState(() => phoneFromStore(user?.phone).national);
   const [email, setEmail] = useState(user?.email ?? '');
   const [message, setMessage] = useState('');
   const [besoin, setBesoin] = useState('');
@@ -68,7 +71,7 @@ export default function AideContactScreen() {
   const leave = () => (router.canGoBack() ? router.back() : router.replace(user ? '/profil' : '/login'));
   const backLabel = user ? 'Retour' : 'Retour à la connexion';
   const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-  const phoneOk = phone.replace(/\D/g, '').length >= 9;
+  const phoneOk = isValidPhone(country, phone);
 
   const sendRappel = async () => {
     if (!firstName.trim() || !lastName.trim()) return setError('Renseignez votre prénom et votre nom.');
@@ -76,7 +79,7 @@ export default function AideContactScreen() {
     setError(null);
     setSending(true);
     try {
-      await api.rappel({ name: fullName, phone: phone.trim(), message: message.trim() || undefined });
+      await api.rappel({ name: fullName, phone: phoneToStore(country, phone), message: message.trim() || undefined });
       go('rappel-ok');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'La demande n’a pas pu aboutir.');
@@ -103,7 +106,8 @@ export default function AideContactScreen() {
       await api.devis({
         name: fullName,
         email: email.trim().toLowerCase(),
-        phone: phone.trim(),
+        phone: phoneToStore(country, phone),
+        countryCode: country,
         classId: classeId!,
         className: classesOfNiveau.find((cl) => cl.id === classeId)?.nom,
         matieres,
@@ -169,7 +173,7 @@ export default function AideContactScreen() {
               <Field label="Nom *" placeholder="Martin" value={lastName} onChangeText={setLastName} autoComplete="family-name" />
             </View>
           </View>
-          <Field label="Téléphone *" placeholder="06 12 34 56 78" keyboardType="phone-pad" autoComplete="tel" value={phone} onChangeText={setPhone} />
+          <PhoneField label="Téléphone *" country={country} onCountryChange={setCountry} value={phone} onChangeText={setPhone} />
           <Field
             label="Quand vous rappeler ?"
             placeholder="Ex. : en semaine après 18h"
@@ -266,7 +270,7 @@ export default function AideContactScreen() {
               <Field label="Nom *" placeholder="Martin" value={lastName} onChangeText={setLastName} autoComplete="family-name" />
             </View>
           </View>
-          <Field label="Téléphone *" placeholder="06 12 34 56 78" keyboardType="phone-pad" autoComplete="tel" value={phone} onChangeText={setPhone} />
+          <PhoneField label="Téléphone *" country={country} onCountryChange={setCountry} value={phone} onChangeText={setPhone} />
           <Field
             label="E-mail *"
             placeholder="camille@exemple.fr"

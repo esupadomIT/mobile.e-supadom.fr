@@ -6,9 +6,12 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Chip, Section, SelectField } from '@/components/forms';
+import { PhoneField, PostalCityFields } from '@/components/CountryFields';
 import { Field, Notice, PrimaryButton } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { isValidPhone, phoneFromStore, phoneToStore, postalCityError } from '@/lib/country';
+import type { CountryCode } from 'libphonenumber-js/min';
 import { FULL_USER_KEY, ME_KEY, useFullUser } from '@/lib/home';
 import { useColors } from '@/theme';
 import type { FullUser } from '@/types';
@@ -21,14 +24,18 @@ interface Form {
   dobMonth: string;
   dobYear: string;
   phone: string;
+  phoneCountry: CountryCode;
   postalCode: string;
   city: string;
   emailParent: string;
   parentPhone: string;
+  parentPhoneCountry: CountryCode;
 }
 
 function toForm(u: FullUser): Form {
   const [y = '', m = '', d = ''] = u.dob ? u.dob.split('T')[0].split('-') : [];
+  const ph = phoneFromStore(u.phone);
+  const pp = phoneFromStore(u.phoneParent);
   return {
     gender: u.gender ?? '',
     firstName: u.firstName ?? '',
@@ -36,11 +43,13 @@ function toForm(u: FullUser): Form {
     dobDay: d,
     dobMonth: m,
     dobYear: y,
-    phone: u.phone ?? '',
+    phone: ph.national,
+    phoneCountry: ph.country,
     postalCode: u.postalCode ?? '',
     city: u.city ?? '',
     emailParent: u.emailParent && u.emailParent !== u.email ? u.emailParent : '',
-    parentPhone: u.phoneParent ?? '',
+    parentPhone: pp.national,
+    parentPhoneCountry: pp.country,
   };
 }
 
@@ -89,14 +98,6 @@ export default function EditProfileScreen() {
     setForm((f) => (f ? { ...f, [k]: v } : f));
   };
 
-  const onPostalCode = async (v: string) => {
-    if (!/^\d{0,5}$/.test(v)) return;
-    set('postalCode')(v);
-    if (v.length === 5) {
-      const city = await api.cityOf(v);
-      if (city) setForm((f) => (f ? { ...f, city } : f));
-    }
-  };
 
   const save = async () => {
     if (!form || !full) return;
@@ -106,11 +107,17 @@ export default function EditProfileScreen() {
     if (!form.lastName.trim()) missing.push('nom');
     if (!validDob(form)) missing.push('date de naissance');
     if (!form.phone.trim()) missing.push('téléphone');
-    if (form.postalCode.length !== 5) missing.push('code postal');
-    if (!form.city.trim()) missing.push('ville');
+    if (!form.postalCode.trim()) missing.push('code postal');
+    else if (!form.city.trim() && !postalCityError(form.phoneCountry, form.postalCode, '')) missing.push('ville');
     if (!isInstructor && !classeId) missing.push('classe');
     if (!isInstructor && matieres.length === 0) missing.push('matières');
     if (missing.length) return setNotice({ kind: 'error', text: `À compléter : ${missing.join(', ')}.` });
+    if (!isValidPhone(form.phoneCountry, form.phone)) return setNotice({ kind: 'error', text: 'Le numéro de téléphone est invalide.' });
+    const postalError = postalCityError(form.phoneCountry, form.postalCode, form.city);
+    if (postalError) return setNotice({ kind: 'error', text: postalError });
+    if (form.parentPhone.trim() && !isValidPhone(form.parentPhoneCountry, form.parentPhone)) {
+      return setNotice({ kind: 'error', text: 'Le téléphone du parent est invalide.' });
+    }
 
     const dob = `${form.dobYear}-${form.dobMonth.padStart(2, '0')}-${form.dobDay.padStart(2, '0')}`;
     const common = {
@@ -119,8 +126,8 @@ export default function EditProfileScreen() {
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
       dob,
-      phone: form.phone.trim(),
-      postalCode: form.postalCode,
+      phone: phoneToStore(form.phoneCountry, form.phone),
+      postalCode: form.postalCode.trim(),
       city: form.city.trim(),
       email: full.email,
     };
@@ -135,7 +142,7 @@ export default function EditProfileScreen() {
           classeId: Number(classeId),
           matieres,
           emailParent: form.emailParent.trim() || null,
-          parentPhone: form.parentPhone.trim() || null,
+          parentPhone: phoneToStore(form.parentPhoneCountry, form.parentPhone) || null,
         });
       }
       await Promise.all([qc.invalidateQueries({ queryKey: ME_KEY }), qc.invalidateQueries({ queryKey: FULL_USER_KEY })]);
@@ -181,22 +188,40 @@ export default function EditProfileScreen() {
 
             <Section title="Coordonnées">
               <Field label="E-mail (identifiant)" value={full?.email ?? ''} editable={false} style={{ color: c.muted }} />
-              <Field label="Téléphone" value={form.phone} onChangeText={set('phone')} keyboardType="phone-pad" autoComplete="tel" />
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <Field label="Code postal" value={form.postalCode} onChangeText={onPostalCode} keyboardType="number-pad" maxLength={5} />
-                </View>
-                <View style={{ flex: 1.6 }}>
-                  <Field label="Ville" value={form.city} onChangeText={set('city')} />
-                </View>
-              </View>
+              <PhoneField
+                label="Téléphone"
+                country={form.phoneCountry}
+                onCountryChange={(iso) => {
+                  setNotice(null);
+                  setForm((f) => (f ? { ...f, phoneCountry: iso, postalCode: '', city: '' } : f));
+                }}
+                value={form.phone}
+                onChangeText={set('phone')}
+              />
+              <PostalCityFields
+                country={form.phoneCountry}
+                postalCode={form.postalCode}
+                city={form.city}
+                required={false}
+                onChange={(v) => {
+                  setNotice(null);
+                  setForm((f) => (f ? { ...f, ...v } : f));
+                }}
+              />
             </Section>
 
             {!isInstructor ? (
               <>
                 <Section title="Parent" subtitle="Facultatif : si le compte est géré par un parent">
                   <Field label="E-mail du parent" value={form.emailParent} onChangeText={set('emailParent')} keyboardType="email-address" autoCapitalize="none" />
-                  <Field label="Téléphone du parent" value={form.parentPhone} onChangeText={set('parentPhone')} keyboardType="phone-pad" />
+                  <PhoneField
+                    label="Téléphone du parent"
+                    country={form.parentPhoneCountry}
+                    onCountryChange={(iso) => setForm((f) => (f ? { ...f, parentPhoneCountry: iso } : f))}
+                    value={form.parentPhone}
+                    onChangeText={set('parentPhone')}
+                    autoComplete="off"
+                  />
                 </Section>
 
                 <Section title="Scolarité">

@@ -85,7 +85,7 @@ export function Chip({ label, selected, onPress, tone = 'primary' }: { label: st
   );
 }
 
-function BottomSheet({ visible, onClose, title, children }: { visible: boolean; onClose: () => void; title: string; children: ReactNode }) {
+export function BottomSheet({ visible, onClose, title, children }: { visible: boolean; onClose: () => void; title: string; children: ReactNode }) {
   const c = useColors();
   const insets = useSafeAreaInsets();
   return (

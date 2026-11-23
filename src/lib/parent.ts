@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 import { dayLabel } from '@/lib/format';
@@ -30,6 +30,32 @@ export function useChildOverview(studentId: number | null) {
     queryFn: () => api.childOverview(studentId!),
     enabled: !!studentId,
     staleTime: 30_000,
+  });
+}
+
+export const childConversationsKey = (studentId: number) => ['parent', 'child', studentId, 'conversations'] as const;
+export const childMessagesKey = (studentId: number, partnerId: number) =>
+  ['parent', 'child', studentId, 'messages', partnerId] as const;
+
+/** Échanges (lecture seule) de chaque enfant suivi avec ses professeurs. */
+export function useChildrenConversations(studentIds: number[], refetchInterval: number | false = false) {
+  return useQueries({
+    queries: studentIds.map((id) => ({
+      queryKey: childConversationsKey(id),
+      queryFn: () => api.childConversations(id),
+      refetchInterval,
+    })),
+  });
+}
+
+/** Messages entre un enfant et un de ses professeurs, `limit` derniers. */
+export function useChildMessages(studentId: number, partnerId: number, limit: number, refetchInterval: number | false = false) {
+  return useQuery({
+    queryKey: [...childMessagesKey(studentId, partnerId), limit],
+    queryFn: () => api.childMessages(studentId, partnerId, limit),
+    refetchInterval,
+    enabled: studentId > 0 && partnerId > 0,
+    placeholderData: (previous) => previous,
   });
 }
 

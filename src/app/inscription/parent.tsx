@@ -4,8 +4,11 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SignupShell, signupStyles as s } from '@/components/signup';
+import { PhoneField, PostalCityFields } from '@/components/CountryFields';
 import { Field, Notice, PrimaryButton } from '@/components/ui';
 import { api } from '@/lib/api';
+import { DEFAULT_COUNTRY, isValidPhone, phoneToStore, postalCityError } from '@/lib/country';
+import type { CountryCode } from 'libphonenumber-js/min';
 import { radius, typography as t, useColors } from '@/theme';
 
 /**
@@ -25,6 +28,7 @@ export default function ParentSignupScreen() {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [country, setCountry] = useState<CountryCode>(DEFAULT_COUNTRY);
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
   const [postalCode, setPostalCode] = useState('');
@@ -41,9 +45,9 @@ export default function ParentSignupScreen() {
 
   const nextFromContact = () => {
     if (!firstName.trim() || !lastName.trim()) return setError('Renseignez votre prénom et votre nom.');
-    if (phone.replace(/\D/g, '').length < 9) return setError('Renseignez un numéro de téléphone valide.');
-    if (!city.trim()) return setError('Renseignez la ville.');
-    if (!/^\d{4,10}$/.test(postalCode.trim())) return setError('Renseignez un code postal valide.');
+    if (!isValidPhone(country, phone)) return setError('Le numéro de téléphone est invalide.');
+    const postalError = postalCityError(country, postalCode, city);
+    if (postalError) return setError(postalError);
     go(2);
   };
 
@@ -57,7 +61,7 @@ export default function ParentSignupScreen() {
       await api.signupParent({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        phone: phone.trim(),
+        phone: phoneToStore(country, phone),
         city: city.trim(),
         postalCode: postalCode.trim(),
         email: email.trim().toLowerCase(),
@@ -108,24 +112,26 @@ export default function ParentSignupScreen() {
               <Field label="Nom *" placeholder="Martin" value={lastName} onChangeText={setLastName} autoComplete="family-name" />
             </View>
           </View>
-          <Field label="Téléphone *" placeholder="06 12 34 56 78" keyboardType="phone-pad" autoComplete="tel" value={phone} onChangeText={setPhone} />
-          <View style={s.row}>
-            <View style={{ flex: 1 }}>
-              <Field label="Ville *" placeholder="Lyon" value={city} onChangeText={setCity} autoComplete="postal-address-locality" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Field
-                label="Code postal *"
-                placeholder="69001"
-                keyboardType="number-pad"
-                value={postalCode}
-                onChangeText={(v) => {
-                  setPostalCode(v);
-                  if (/^\d{5}$/.test(v) && !city.trim()) void api.cityOf(v).then((found) => found && setCity(found));
-                }}
-              />
-            </View>
-          </View>
+          <PhoneField
+            label="Téléphone *"
+            country={country}
+            onCountryChange={(iso) => {
+              setCountry(iso);
+              setPostalCode('');
+              setCity('');
+            }}
+            value={phone}
+            onChangeText={setPhone}
+          />
+          <PostalCityFields
+            country={country}
+            postalCode={postalCode}
+            city={city}
+            onChange={(v) => {
+              setPostalCode(v.postalCode);
+              setCity(v.city);
+            }}
+          />
         </View>
         {error ? <Notice kind="error">{error}</Notice> : null}
         <PrimaryButton title="Continuer" onPress={nextFromContact} />

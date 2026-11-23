@@ -5,7 +5,9 @@ import type {
   ChatData,
   Disponibilite,
   FullUser,
+  ChildConversations,
   ChildLink,
+  ChildMessagesPage,
   ChildOverview,
   Message,
   MessagesPage,
@@ -79,6 +81,7 @@ export interface DevisBody {
   name: string;
   email: string;
   phone?: string;
+  countryCode?: string;
   classId: number;
   className?: string;
   matieres: number[];
@@ -373,6 +376,10 @@ export const api = {
       body: JSON.stringify({ email, relation }),
     }),
   childOverview: (studentId: number) => request<ChildOverview>(`/v1/parent/children/${studentId}`),
+  /** Échanges de l'enfant avec ses professeurs : lecture seule, rien n'est marqué comme lu. */
+  childConversations: (studentId: number) => request<ChildConversations>(`/v1/parent/children/${studentId}/conversations`),
+  childMessages: (studentId: number, partnerId: number, limit = 50) =>
+    request<ChildMessagesPage>(`/v1/parent/children/${studentId}/messages?partnerId=${partnerId}&limit=${limit}`),
   /** « Modifier le profil de Clara » : enfant créé par le parent uniquement. */
   updateChildProfile: (studentId: number, body: UpdateChildProfileBody) =>
     request<{ studentId: number }>(`/v1/parent/children/${studentId}/profil`, { method: 'PATCH', body: JSON.stringify(body) }),

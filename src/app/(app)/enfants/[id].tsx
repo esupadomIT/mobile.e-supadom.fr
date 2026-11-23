@@ -97,6 +97,11 @@ export default function ChildScreen() {
         )}
       </Card>
 
+      <SecondaryButton
+        title={`Voir les échanges de ${child.firstName}`}
+        onPress={() => router.push({ pathname: '/messages', params: { enfant: String(studentId) } })}
+      />
+
       <Card>
         <Text style={[t.cardTitle, { color: c.text }]}>Solde d’heures</Text>
         <Text style={[styles.big, { color: c.text }]}>{hoursLabel(child.totalHours)} restantes</Text>

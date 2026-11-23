@@ -6,8 +6,11 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SelectField } from '@/components/forms';
 import { CheckChip, GroupLabel, RadioRow, SignupShell, signupStyles as s } from '@/components/signup';
+import { PhoneField, PostalCityFields } from '@/components/CountryFields';
 import { Card, Field, Notice, PrimaryButton, SecondaryButton } from '@/components/ui';
 import { api } from '@/lib/api';
+import { DEFAULT_COUNTRY, isValidPhone, phoneToStore, postalCityError } from '@/lib/country';
+import type { CountryCode } from 'libphonenumber-js/min';
 import {
   EDUCATION_LEVELS,
   JOURS,
@@ -50,6 +53,7 @@ export default function TeacherApplicationScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [country, setCountry] = useState<CountryCode>(DEFAULT_COUNTRY);
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
   const [postalCode, setPostalCode] = useState('');
@@ -82,9 +86,9 @@ export default function TeacherApplicationScreen() {
     if (step === 1) {
       if (!firstName.trim() || !lastName.trim()) return 'Renseignez votre prénom et votre nom.';
       if (!EMAIL.test(email.trim())) return 'Renseignez une adresse e-mail valide.';
-      if (phone.replace(/\D/g, '').length < 9) return 'Renseignez un numéro de téléphone valide.';
-      if (!city.trim()) return 'Renseignez votre ville.';
-      if (!/^\d{4,10}$/.test(postalCode.trim())) return 'Renseignez un code postal valide.';
+      if (!isValidPhone(country, phone)) return 'Le numéro de téléphone est invalide.';
+      const postalError = postalCityError(country, postalCode, city);
+      if (postalError) return postalError;
     }
     if (step === 2) {
       if (!educationLevel) return 'Choisissez votre niveau de diplôme.';
@@ -146,8 +150,8 @@ export default function TeacherApplicationScreen() {
       body.append('name', lastName.trim());
       body.append('surname', firstName.trim());
       body.append('email', email.trim().toLowerCase());
-      body.append('phone', phone.trim());
-      body.append('countryCode', 'FR');
+      body.append('phone', phoneToStore(country, phone));
+      body.append('countryCode', country);
       body.append('city', city.trim());
       body.append('postalCode', postalCode.trim());
       body.append('educationLevel', educationLevel);
@@ -254,24 +258,26 @@ export default function TeacherApplicationScreen() {
             value={email}
             onChangeText={setEmail}
           />
-          <Field label="Téléphone *" placeholder="06 12 34 56 78" keyboardType="phone-pad" autoComplete="tel" value={phone} onChangeText={setPhone} />
-          <View style={s.row}>
-            <View style={{ flex: 1 }}>
-              <Field label="Ville *" placeholder="Lyon" value={city} onChangeText={setCity} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Field
-                label="Code postal *"
-                placeholder="69001"
-                keyboardType="number-pad"
-                value={postalCode}
-                onChangeText={(v) => {
-                  setPostalCode(v);
-                  if (/^\d{5}$/.test(v) && !city.trim()) void api.cityOf(v).then((found) => found && setCity(found));
-                }}
-              />
-            </View>
-          </View>
+          <PhoneField
+            label="Téléphone *"
+            country={country}
+            onCountryChange={(iso) => {
+              setCountry(iso);
+              setPostalCode('');
+              setCity('');
+            }}
+            value={phone}
+            onChangeText={setPhone}
+          />
+          <PostalCityFields
+            country={country}
+            postalCode={postalCode}
+            city={city}
+            onChange={(v) => {
+              setPostalCode(v.postalCode);
+              setCity(v.city);
+            }}
+          />
         </View>
       ) : null}
 

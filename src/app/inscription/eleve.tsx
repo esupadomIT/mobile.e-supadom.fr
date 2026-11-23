@@ -5,8 +5,11 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CheckChip, GroupLabel, RadioRow, SignupShell, signupStyles as s } from '@/components/signup';
+import { PhoneField, PostalCityFields } from '@/components/CountryFields';
 import { Field, Notice, PrimaryButton, SecondaryButton } from '@/components/ui';
 import { api } from '@/lib/api';
+import { DEFAULT_COUNTRY, isValidPhone, phoneToStore, postalCityError } from '@/lib/country';
+import type { CountryCode } from 'libphonenumber-js/min';
 import { savePendingAvailability } from '@/lib/pendingAvailability';
 import { radius, typography as t, useColors } from '@/theme';
 
@@ -40,8 +43,10 @@ export default function StudentSignupScreen() {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [country, setCountry] = useState<CountryCode>(DEFAULT_COUNTRY);
   const [phone, setPhone] = useState('');
   const [emailParent, setEmailParent] = useState('');
+  const [parentCountry, setParentCountry] = useState<CountryCode>(DEFAULT_COUNTRY);
   const [phoneParent, setPhoneParent] = useState('');
   const [city, setCity] = useState('');
   const [postalCode, setPostalCode] = useState('');
@@ -86,11 +91,11 @@ export default function StudentSignupScreen() {
 
   const nextFromContact = () => {
     if (!firstName.trim() || !lastName.trim()) return setError('Renseignez le prénom et le nom.');
-    if (phone.replace(/\D/g, '').length < 9) return setError('Renseignez un numéro de téléphone valide.');
+    if (!isValidPhone(country, phone)) return setError('Le numéro de téléphone est invalide.');
     if (emailParent.trim() && !EMAIL.test(emailParent.trim())) return setError('L’e-mail du parent est invalide.');
-    if (phoneParent.trim() && phoneParent.replace(/\D/g, '').length < 9) return setError('Le téléphone du parent est invalide.');
-    if (!city.trim()) return setError('Renseignez la ville.');
-    if (!/^\d{4,10}$/.test(postalCode.trim())) return setError('Renseignez un code postal valide.');
+    if (phoneParent.trim() && !isValidPhone(parentCountry, phoneParent)) return setError('Le téléphone du parent est invalide.');
+    const postalError = postalCityError(country, postalCode, city);
+    if (postalError) return setError(postalError);
     go(2);
   };
 
@@ -112,8 +117,8 @@ export default function StudentSignupScreen() {
       await api.signupStudent({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        phone: phone.trim(),
-        phoneParent: isParent ? phone.trim() : phoneParent.trim() || undefined,
+        phone: phoneToStore(country, phone),
+        phoneParent: isParent ? phoneToStore(country, phone) : phoneToStore(parentCountry, phoneParent) || undefined,
         city: city.trim(),
         postalCode: postalCode.trim(),
         email: mail,
@@ -190,7 +195,17 @@ export default function StudentSignupScreen() {
               <Field label="Nom *" placeholder="Martin" value={lastName} onChangeText={setLastName} autoComplete={isParent ? 'off' : 'family-name'} />
             </View>
           </View>
-          <Field label={isParent ? 'Votre téléphone *' : 'Téléphone *'} placeholder="06 12 34 56 78" keyboardType="phone-pad" autoComplete="tel" value={phone} onChangeText={setPhone} />
+          <PhoneField
+            label={isParent ? 'Votre téléphone *' : 'Téléphone *'}
+            country={country}
+            onCountryChange={(iso) => {
+              setCountry(iso);
+              setPostalCode('');
+              setCity('');
+            }}
+            value={phone}
+            onChangeText={setPhone}
+          />
           {!isParent ? (
             <>
               <Field
@@ -202,26 +217,25 @@ export default function StudentSignupScreen() {
                 value={emailParent}
                 onChangeText={setEmailParent}
               />
-              <Field label="Téléphone parent" placeholder="06 12 34 56 78" keyboardType="phone-pad" autoComplete="off" value={phoneParent} onChangeText={setPhoneParent} />
+              <PhoneField
+                label="Téléphone parent"
+                country={parentCountry}
+                onCountryChange={setParentCountry}
+                value={phoneParent}
+                onChangeText={setPhoneParent}
+                autoComplete="off"
+              />
             </>
           ) : null}
-          <View style={s.row}>
-            <View style={{ flex: 1 }}>
-              <Field label="Ville *" placeholder="Lyon" value={city} onChangeText={setCity} autoComplete="postal-address-locality" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Field
-                label="Code postal *"
-                placeholder="69001"
-                keyboardType="number-pad"
-                value={postalCode}
-                onChangeText={(v) => {
-                  setPostalCode(v);
-                  if (/^\d{5}$/.test(v) && !city.trim()) void api.cityOf(v).then((found) => found && setCity(found));
-                }}
-              />
-            </View>
-          </View>
+          <PostalCityFields
+            country={country}
+            postalCode={postalCode}
+            city={city}
+            onChange={(v) => {
+              setPostalCode(v.postalCode);
+              setCity(v.city);
+            }}
+          />
         </View>
         {error ? <Notice kind="error">{error}</Notice> : null}
         <PrimaryButton title="Continuer" onPress={nextFromContact} />

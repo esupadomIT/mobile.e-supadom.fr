@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
@@ -6,9 +5,7 @@ import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
-  Linking,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -17,15 +14,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/AppHeader';
-import { Card, PrimaryButton } from '@/components/ui';
+import { MessageCard } from '@/components/ChatMessage';
+import { Card, PrimaryButton, SecondaryButton } from '@/components/ui';
 import { CHAT_POLL_MS } from '@/config';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { CHAT_KEY, messagesKey, useAppendMessage, useChat, useMessages } from '@/lib/chat';
-import { dayLabel, fileUrl, formatTime, fullName, messageText } from '@/lib/format';
+import { dayLabel, formatTime, fullName } from '@/lib/format';
 import { setActiveChatPartner } from '@/lib/push';
 import { fonts, typography as t, useColors } from '@/theme';
-import type { Attachment, Message, Role } from '@/types';
+import type { Message, Role } from '@/types';
 
 /** Maquette Figma « 📨 Parcours Messages » → écran « Marc Lambert · Clair / Sombre » (53:24408). */
 
@@ -53,7 +51,7 @@ export default function ChatScreen() {
     conversation?.partner ?? [...(data?.instructors ?? []), ...(data?.students ?? [])].find((p) => p.id === partnerId);
 
   // Messages : seulement cette discussion, `limit` derniers, rafraîchis toutes les 5 s
-  const { data: page, isLoading } = useMessages(partnerId, limit, CHAT_POLL_MS);
+  const { data: page, isLoading, isError, refetch } = useMessages(partnerId, limit, CHAT_POLL_MS);
   const messages = useMemo(() => page?.messages ?? [], [page]); // du plus récent au plus ancien
 
   // Marque la discussion comme lue dès qu'il y a des messages non lus.
@@ -91,8 +89,7 @@ export default function ChatScreen() {
   const onSend = () => {
     const text = draft.trim();
     if (!text || send.isPending) return;
-    setDraft('');
-    send.mutate(text, { onError: () => setDraft(text) });
+    send.mutate(text, { onSuccess: () => setDraft('') });
   };
 
   // Lignes (liste inversée : index 0 = plus récent) : messages, statut de lecture,
@@ -135,6 +132,14 @@ export default function ChatScreen() {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {isLoading ? (
           <ActivityIndicator style={styles.flex} color={c.primary} />
+        ) : isError ? (
+          <View style={styles.error}>
+            <Card>
+              <Text style={[t.cardTitle, { color: c.text }]}>Conversation indisponible</Text>
+              <Text style={[t.cardText, { color: c.muted }]}>Vérifiez votre connexion, puis réessayez. Votre brouillon est conservé.</Text>
+            </Card>
+            <SecondaryButton title="Réessayer" onPress={() => void refetch()} />
+          </View>
         ) : (
           <FlatList
             inverted // le plus récent en bas, sans scroll manuel
@@ -197,7 +202,7 @@ export default function ChatScreen() {
               onBlur={() => setFocused(false)}
               multiline
               maxLength={MAX_LENGTH}
-              editable={!!partner}
+              editable={!!partner && !send.isPending}
               accessibilityLabel="Votre réponse"
             />
           </View>
@@ -213,58 +218,15 @@ type Row =
   | { kind: 'status'; key: string; message: Message }
   | { kind: 'message'; key: string; message: Message; showName: boolean };
 
-/** Carte de message : blanche pour le correspondant, surface/info pour mes messages. */
-function MessageCard({ message, mine, name }: { message: Message; mine: boolean; name: string | null }) {
-  const c = useColors();
-  const text = messageText(message);
-  return (
-    <View style={[styles.row, styles.messageGroup]}>
-      {text || name ? (
-        <Card tone={mine ? 'info' : 'default'}>
-          {name ? <Text style={[t.cardTitle, { color: c.text }]}>{name}</Text> : null}
-          {text ? (
-            <Text style={[t.cardText, { color: c.muted }]} selectable>
-              {text}
-            </Text>
-          ) : null}
-          {!name ? <Text style={[t.captionRegular, { color: c.subtle }]}>{formatTime(message.createdAt)}</Text> : null}
-        </Card>
-      ) : null}
-      {message.attachments?.map((a) => <AttachmentCard key={a.id} attachment={a} />)}
-    </View>
-  );
-}
-
-/** Carte « Annales Bac · Équations » / « PDF · 248 Ko » avec icône document. */
-function AttachmentCard({ attachment }: { attachment: Attachment }) {
-  const c = useColors();
-  const ext = (attachment.fileName?.split('.').pop() || attachment.fileType.split('/').pop() || 'fichier').toUpperCase();
-  return (
-    <Pressable
-      accessibilityRole="link"
-      accessibilityLabel={`Ouvrir ${attachment.fileName || 'la pièce jointe'}`}
-      onPress={() => Linking.openURL(fileUrl(attachment.fileUrl))}
-      style={({ pressed }) => [styles.attachment, { backgroundColor: c.surfaceAlt, borderColor: pressed ? c.focus : c.border }]}
-    >
-      <Text style={[t.cardTitle, { color: c.text }]} numberOfLines={2}>
-        {attachment.fileName || 'Pièce jointe'}
-      </Text>
-      <Text style={[t.cardText, { color: c.muted }]}>{ext} · Toucher pour ouvrir</Text>
-      <Ionicons name="document-text-outline" size={26} color={c.link} />
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  list: { paddingHorizontal: 24, paddingTop: 8, flexGrow: 1 },
+  list: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 8, flexGrow: 1 },
+  error: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 24, gap: 16, flex: 1 },
   flipped: { transform: [{ scaleY: -1 }] }, // la liste est inversée
   titleBlock: { gap: 16, paddingTop: 24, paddingBottom: 16 },
   row: { marginBottom: 16 },
-  messageGroup: { gap: 16 },
   status: { marginTop: -8, marginBottom: 16 },
-  attachment: { borderWidth: 1, borderRadius: 14, padding: 16, gap: 8 },
-  composer: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, gap: 16 },
+  composer: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, gap: 16 },
   replyCard: { borderWidth: 1, borderRadius: 14, padding: 16, gap: 8 },
   input: { minHeight: 20, maxHeight: 120, padding: 0, fontFamily: fonts.regular, textAlignVertical: 'top' },
 });

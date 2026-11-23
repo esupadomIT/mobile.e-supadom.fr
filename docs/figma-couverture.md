@@ -1,5 +1,12 @@
 # Couverture des maquettes Figma — app mobile e-Supadom
 
+## Revue Messages du 23/11/2026 — vérification en cours
+
+- Reprise des modifications locales de Claude : messagerie élève/professeur et historique parent en lecture seule conservés.
+- Listes et conversations limitées à 760 px sur tablette ; filtres sur plusieurs lignes et noms de correspondants non tronqués dans les listes.
+- Chat : état d'erreur avec bouton Réessayer ; brouillon conservé jusqu'au succès de l'envoi et saisie verrouillée pendant la requête pour éviter sa perte.
+- Comparaison directe avec Figma dans Chrome non effectuée : fenêtre minimisée non restaurable par l'outil, puis erreur Windows 1455 (fichier de pagination insuffisant). Ne pas considérer cette revue comme une validation visuelle finale.
+
 Maquettes exportées dans `new_Esup/figma/` (une page Figma = un PDF, variantes claire et sombre).
 Dernier export complet : `figma/_export_figma_2026-11-22b/` (22/11/2026, soir). Par rapport à l'export du matin : nouvelle page « Profil (Élève & Parent) » (espace parent, espace élève, modifier le profil d'un enfant, ajouter un élève), « Trouver un prof » côté parent (commence par l'ajout d'un enfant), e-mail et téléphone du parent à l'inscription élève, bleu principal `#257DEF`.
 Suffixe `-done` = tous les écrans du PDF existent dans l'app avec des données réelles de l'API.
@@ -18,6 +25,7 @@ Règle retenue : l'app reprend **les mêmes fonctionnalités que le site e-supad
 | `e-Supadom-Planning-Professeur-done.pdf` | Couvert | `planning`, `cours/[id]`, `dispos` | `instructor-agenda`, `instructor-mes-seances` |
 | `e-Supadom-Messages-Professeur-done.pdf` | Couvert | `messages`, `chat/[partnerId]` | `instructor-message` |
 | `e-Supadom-Messages-Eleve-done.pdf` | Couvert | `messages`, `chat/[partnerId]` | `student-message` (un compte élève, pas d'espace parent séparé) |
+| `_export_figma_2026-11-22b/Messages-Eleve.pdf` (parent) | Couvert | `messages` (vue parent), `echange/[studentId]/[partnerId]`, bouton « Voir les échanges de Clara » dans `enfants/[id]` | — (espace parent propre à l'app) |
 | `e-Supadom-Profil-done.pdf`, `e-Supadom-Profil-2-done.pdf` | Couvert | `profil`, `profil-modifier` (dont e-mail / téléphone du parent), `reglages`, `securite` | `student-profile`, `instructor-profile`, `*-settings` |
 | `e-Supadom-Accueil-Notifications-done.pdf` | Couvert | `accueil`, `notifications` | `student-dashboard`, `instructor-dashboard` |
 | `e-Supadom-Mot-de-passe-oublie-done.pdf` | Couvert | `forgot-password` (5 états) | `forgot-password` ; le lien de l'e-mail ouvre `reset-password` sur le site, comme pour le web |
@@ -30,7 +38,9 @@ Règle retenue : l'app reprend **les mêmes fonctionnalités que le site e-supad
 
 Profil parent : pas de « Mon solde prépayé » (le solde appartient à chaque élève, décision du 22/11). Établissement scolaire et rythme hebdomadaire (« 2 cours / sem. », « 1h30 par séance ») non repris dans l'ajout et la modification d'un enfant. Photo de l'enfant : affichée si elle existe, pas encore modifiable depuis l'app.
 
-Éléments de maquette volontairement non repris (absents du site) : « Échange parent–professeur » séparé, carte enregistrée, rémunération et virements prof (carte « Rémunération » du profil professeur), « +2 ce mois », notifications de paiement ; dans Aide & contact, la question « cours en visio » et le choix des jours / créneau de rappel du devis, ainsi que l'e-mail et le code postal du formulaire « Rappelez-moi ».
+Messages parent (décision du 23/11) : le parent consulte en **lecture seule** l'historique des conversations entre ses enfants et leurs professeurs ; il n'envoie aucun message, ne démarre pas de conversation et ne marque rien comme lu. L'écran « Échange parent–professeur » de la maquette est repris dans ce sens (carte « Lecture seule » à la place de « Votre réponse »).
+
+Éléments de maquette volontairement non repris (absents du site) : envoi de messages par le parent, carte enregistrée, rémunération et virements prof (carte « Rémunération » du profil professeur), « +2 ce mois », notifications de paiement ; dans Aide & contact, la question « cours en visio » et le choix des jours / créneau de rappel du devis, ainsi que l'e-mail et le code postal du formulaire « Rappelez-moi ».
 
 ## Routes ajoutées au backend mobile (admin.mobile.e-supadom.fr)
 
@@ -38,6 +48,8 @@ Profil parent : pas de « Mon solde prépayé » (le solde appartient à chaque 
 - `PATCH /api/v1/parent/children/:studentId/profil` : le parent modifie le profil d'un enfant qu'il a créé (prénom, nom, date de naissance, téléphone, classe, matières).
 - `POST /api/v1/contact/rappel` et `POST /api/devis/v1/submit` : « Rappelez-moi » et demande de devis depuis l'app, sans reCAPTCHA, 3 essais / min / IP ; mêmes e-mails et enregistrement que les routes du site.
 - `POST /api/seance/v1/reserver` : réservation par l'élève, sur un créneau entièrement inclus dans les disponibilités d'un prof qui lui a déjà donné cours, au moins 2 h à l'avance. Type de cours et matière repris du dernier cours ensemble ; création via les mêmes règles que `seance/create` (conflits, solde, débit, lien Meet, e-mails). 409 = avertissements (férié, vacances, disponibilités élève) confirmables avec `force`.
+
+- `GET /api/v1/parent/children/:studentId/conversations` et `GET /api/v1/parent/children/:studentId/messages?partnerId=` : échanges de l'enfant avec ses professeurs, lecture seule, lien parent ACTIF obligatoire (403 sinon), correspondant limité aux professeurs. `tchat/conversation` ne renvoie plus de liste d'élèves à un compte PARENT.
 
 Tests : `npm test` (77 tests, dont ces deux routes).
 

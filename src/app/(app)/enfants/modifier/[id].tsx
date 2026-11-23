@@ -7,7 +7,10 @@ import { AccountScreen } from '@/components/AccountScreen';
 import { Avatar } from '@/components/Avatar';
 import { Section } from '@/components/forms';
 import { CheckChip, signupStyles as s } from '@/components/signup';
+import { PhoneField } from '@/components/CountryFields';
 import { Field, Notice, PrimaryButton, SecondaryButton } from '@/components/ui';
+import { DEFAULT_COUNTRY, isValidPhone, phoneFromStore, phoneToStore } from '@/lib/country';
+import type { CountryCode } from 'libphonenumber-js/min';
 import { api } from '@/lib/api';
 import { CHILDREN_KEY, childKey, formatFrDate, parseFrDate, sinceLabel, useChildOverview } from '@/lib/parent';
 import { radius, typography as t, useColors } from '@/theme';
@@ -28,6 +31,7 @@ export default function EditChildScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dob, setDob] = useState('');
+  const [country, setCountry] = useState<CountryCode>(DEFAULT_COUNTRY);
   const [phone, setPhone] = useState('');
   const [niveau, setNiveau] = useState<string | null>(null);
   const [classeId, setClasseId] = useState<number | null>(null);
@@ -60,7 +64,9 @@ export default function EditChildScreen() {
     setFirstName(child.firstName ?? '');
     setLastName(child.lastName ?? '');
     setDob(formatFrDate(child.dob));
-    setPhone(child.phone ?? '');
+    const ph = phoneFromStore(child.phone);
+    setCountry(ph.country);
+    setPhone(ph.national);
     const cl = classes.data.find((x) => x.id === child.classe?.id);
     setNiveau(cl?.niveau?.nom ?? child.classe?.niveau ?? null);
     setClasseId(child.classe?.id ?? null);
@@ -73,7 +79,7 @@ export default function EditChildScreen() {
     if (!firstName.trim() || !lastName.trim()) return setError('Renseignez le prénom et le nom.');
     const iso = parseFrDate(dob);
     if (iso === 'invalid') return setError('Date de naissance invalide (format JJ/MM/AAAA).');
-    if (phone.trim() && phone.replace(/\D/g, '').length < 9) return setError('Numéro de téléphone invalide.');
+    if (phone.trim() && !isValidPhone(country, phone)) return setError('Numéro de téléphone invalide.');
     if (!classeId) return setError('Choisissez la classe actuelle.');
     if (matieres.length === 0) return setError('Choisissez au moins une matière.');
     setError(null);
@@ -83,7 +89,7 @@ export default function EditChildScreen() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         dob: iso,
-        phone: phone.trim() || null,
+        phone: phoneToStore(country, phone) || null,
         classe: classeId,
         matieres,
       });
@@ -147,7 +153,7 @@ export default function EditChildScreen() {
             </View>
           </View>
           <Field label="Date de naissance" placeholder="JJ/MM/AAAA" keyboardType="numbers-and-punctuation" value={dob} onChangeText={setDob} />
-          <Field label="Téléphone" placeholder="06 12 34 56 78" keyboardType="phone-pad" autoComplete="off" value={phone} onChangeText={setPhone} />
+          <PhoneField label="Téléphone" country={country} onCountryChange={setCountry} value={phone} onChangeText={setPhone} autoComplete="off" />
         </View>
       </Section>
 

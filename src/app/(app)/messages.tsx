@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/AppHeader';
+import { ParentMessages } from '@/components/ParentMessages';
 import { Card, PrimaryButton } from '@/components/ui';
 import { LIST_POLL_MS } from '@/config';
 import { useManualRefresh } from '@/hooks/useManualRefresh';
@@ -19,7 +20,13 @@ const openChat = (partnerId: number) =>
 
 type Filter = 'unread' | 'all';
 
-export default function ConversationsScreen() {
+export default function MessagesScreen() {
+  const { user } = useAuth();
+  // Parent / tuteur : échanges de ses enfants avec leurs profs, en lecture seule.
+  return user?.role === 'PARENT' ? <ParentMessages /> : <ConversationsScreen />;
+}
+
+function ConversationsScreen() {
   const { user } = useAuth();
   const c = useColors();
   const { data, isLoading, isError, refetch } = useChat(LIST_POLL_MS);
@@ -137,10 +144,10 @@ function ConversationCard({ conversation, myId }: { conversation: Conversation; 
 
   return (
     <Card onPress={() => openChat(partner.id)} accessibilityLabel={`Conversation avec ${fullName(partner)}${unread ? `, ${unreadCount} non lus` : ''}`}>
-      <Text style={[t.cardTitle, { color: c.text }]} numberOfLines={1}>
+      <Text style={[t.cardTitle, { color: c.text }]}>
         {title}
       </Text>
-      <Text style={[t.cardText, { color: c.muted }]} numberOfLines={1}>
+      <Text style={[t.cardText, { color: c.muted }]} numberOfLines={2}>
         {preview}
       </Text>
       {unread ? (
@@ -166,9 +173,9 @@ function ContactCard({ contact }: { contact: Contact }) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 24, paddingBottom: 40 },
+  list: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 24, paddingBottom: 40 },
   headerBlock: { gap: 16, marginBottom: 16 },
-  filters: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  filters: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 },
   active: { fontFamily: fonts.semibold },
   footer: { gap: 16, marginTop: 16 },
   contacts: { gap: 12, marginTop: 8 },

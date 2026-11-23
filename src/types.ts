@@ -204,6 +204,26 @@ export interface ChildOverview {
   teachers: { id: number; name: string; profilePicture: string | null }[];
 }
 
+/** GET /api/v1/parent/children/:studentId/conversations : échanges de l'enfant avec ses profs (lecture seule). */
+export interface ChildConversation {
+  partner: Partner;
+  lastMessage: Message;
+  totalMessages: number;
+}
+
+export interface ChildConversations {
+  studentId: number;
+  conversations: ChildConversation[];
+}
+
+/** GET /api/v1/parent/children/:studentId/messages?partnerId= (du plus récent au plus ancien). */
+export interface ChildMessagesPage {
+  studentId: number;
+  partner: Partner;
+  messages: Message[];
+  hasMore: boolean;
+}
+
 /** GET /api/v1/me/parents → { parents } (vue élève). */
 export interface ParentOfStudent {
   linkId: number;

@@ -17,6 +17,7 @@ export type TextInputRef = ComponentRef<typeof TextInput>;
 
 export function Field({
   label,
+  left,
   right,
   style,
   onFocus,
@@ -24,7 +25,7 @@ export function Field({
   ref,
   error,
   ...props
-}: Omit<TextInputProps, 'ref'> & { label: string; right?: ReactNode; ref?: Ref<TextInputRef>; error?: string | null }) {
+}: Omit<TextInputProps, 'ref'> & { label: string; left?: ReactNode; right?: ReactNode; ref?: Ref<TextInputRef>; error?: string | null }) {
     const c = useColors();
     const [focused, setFocused] = useState(false);
     return (
@@ -38,6 +39,7 @@ export function Field({
               : { backgroundColor: focused ? c.surface : c.bg, borderColor: focused ? c.primary : c.border },
           ]}
         >
+          {left}
           <TextInput
             ref={ref}
             accessibilityLabel={label}
