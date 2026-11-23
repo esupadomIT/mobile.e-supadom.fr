@@ -65,6 +65,23 @@ eas build -p android --profile production
 eas build -p ios --profile production
 eas submit -p android --profile production --latest  # Play, piste interne
 eas submit -p ios --latest                           # App Store Connect / TestFlight
+
+
+# creer nouvelle version IOS
+npx eas login        # si besoin, compte guetat  
+npx eas build -p ios --profile staging --auto-submit   # staging
+npx eas build -p ios --profile production --auto-submit     # production
+
+- Si EAS demande la connexion Apple, connecte-toi avec le compte de l équipe Apple Developer, double authentification comprise.
+- Suis l avancement avec eas build:list ou sur https://expo.dev. Le build prend en général 15 à 30 minutes.
+- il n y a rien à faire non plus pour tes testeurs internes. Pour des testeurs externes, il faut ajouter le build à leur groupe dans TestFlight.
+
+# creer nouvelle version IOS
+npx eas build -p android --profile staging --auto-submit
+
+elle construit un fichier .aab, le format attendu par le Play Store, avec le numéro de version incrémenté automatiquement ;
+elle l'envoie sur la piste de test interne du Play Console (track: internal dans eas.json), là où ton app est déjà.
+
 ```
 
 - Le premier build iOS se lance depuis un terminal : connexion Apple (2FA), création
