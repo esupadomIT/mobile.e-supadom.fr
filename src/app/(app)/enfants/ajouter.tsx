@@ -1,21 +1,23 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { AccountScreen } from '@/components/AccountScreen';
 import { Chip, Section } from '@/components/forms';
 import { CheckChip, RadioRow, signupStyles as s } from '@/components/signup';
 import { Field, Notice, PrimaryButton } from '@/components/ui';
 import { api } from '@/lib/api';
-import { CHILDREN_KEY, RELATIONS } from '@/lib/parent';
-import { typography as t, useColors } from '@/theme';
+import { CHILDREN_KEY, parseFrDate, RELATIONS } from '@/lib/parent';
+import { fonts, radius, typography as t, useColors } from '@/theme';
 import type { ParentRelation } from '@/types';
 
 /**
- * Parcours P2 « Ajouter un enfant » (document « Parcours à implémenter ») :
- *   A. créer le profil de l'enfant (lien actif tout de suite) ;
+ * Maquette Figma « Ajouter un élève » (Profil · Élève & Parent) et parcours P2 :
+ *   A. créer le profil de l'enfant : il reçoit un lien d'activation, sa référence est créée à l'activation ;
  *   B. inviter un élève déjà inscrit par e-mail (il accepte depuis son app).
+ * Établissement scolaire et rythme hebdomadaire de la maquette ne sont pas repris (absents du site).
  */
 
 type Mode = 'creer' | 'inviter';
@@ -27,13 +29,14 @@ export default function AddChildScreen() {
   const [mode, setMode] = useState<Mode>('creer');
   const [relation, setRelation] = useState<ParentRelation>('MERE');
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
+  const [done, setDone] = useState<{ kind: 'creer' | 'inviter'; email: string } | null>(null);
   const [sending, setSending] = useState(false);
 
   // A. Créer le profil
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [childEmail, setChildEmail] = useState('');
+  const [dob, setDob] = useState('');
   const [niveau, setNiveau] = useState<string | null>(null);
   const [classeId, setClasseId] = useState<number | null>(null);
   const [matieres, setMatieres] = useState<number[]>([]);
@@ -66,6 +69,7 @@ export default function AddChildScreen() {
       if (!firstName.trim() || !lastName.trim()) return setError('Renseignez le prénom et le nom de votre enfant.');
       if (!childEmail.trim()) return setError('Renseignez l’adresse e-mail de votre enfant : il recevra un lien pour activer son compte.');
       if (!EMAIL.test(childEmail.trim())) return setError('L’adresse e-mail de l’enfant est invalide.');
+      if (parseFrDate(dob) === 'invalid') return setError('Date de naissance invalide (format JJ/MM/AAAA).');
       if (!classeId) return setError('Choisissez le niveau et la classe.');
       if (matieres.length === 0) return setError('Choisissez au moins une matière.');
     } else if (!EMAIL.test(inviteEmail.trim())) {
@@ -79,18 +83,17 @@ export default function AddChildScreen() {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           email: childEmail.trim().toLowerCase(),
+          dob: (parseFrDate(dob) as string | null) ?? undefined,
           classe: classeId!,
           classeName: classesOfNiveau.find((cl) => cl.id === classeId)?.nom,
           matieres,
           matiereNames: names.join(', '),
           relation,
         });
-        setDone(
-          `${firstName.trim()} est maintenant rattaché(e) à votre compte. Un e-mail lui a été envoyé à ${childEmail.trim().toLowerCase()} pour activer son compte : son identifiant élève sera créé à l’activation.`,
-        );
+        setDone({ kind: 'creer', email: childEmail.trim().toLowerCase() });
       } else {
         await api.inviteChild(inviteEmail.trim().toLowerCase(), relation);
-        setDone('Demande envoyée : l’élève doit l’accepter depuis son application (valable 7 jours).');
+        setDone({ kind: 'inviter', email: inviteEmail.trim().toLowerCase() });
       }
       await qc.invalidateQueries({ queryKey: CHILDREN_KEY });
     } catch (e) {
@@ -101,16 +104,41 @@ export default function AddChildScreen() {
   };
 
   if (done) {
+    // Maquette « Merci pour votre intérêt · Votre demande d’activation a été envoyée avec succès »
     return (
-      <AccountScreen title="Ajouter un enfant" subtitle="C’est fait.">
-        <Notice kind="success">{done}</Notice>
-        <PrimaryButton title="Retour à mon profil" onPress={() => (router.canGoBack() ? router.back() : router.replace('/profil'))} />
+      <AccountScreen title={done.kind === 'creer' ? 'Votre demande d’activation a été envoyée avec succès' : 'Demande envoyée'} subtitle="MERCI POUR VOTRE INTÉRÊT">
+        <View style={[styles.ok, { backgroundColor: c.accentSoft }]}>
+          <Ionicons name="checkmark" size={24} color={c.onAccent} />
+        </View>
+        <View style={[styles.mailBox, { borderColor: c.border, backgroundColor: c.surface }]}>
+          <Text style={[t.caption, { color: c.text }]}>E-mail</Text>
+          <Text style={[t.cardText, { color: c.muted }]}>
+            {done.kind === 'creer' ? (
+              <>
+                Un lien d’activation a été envoyé à <Text style={{ fontFamily: fonts.semibold, color: c.text }}>{done.email}</Text>. Votre enfant clique sur ce lien pour activer son compte : son identifiant élève est créé à ce moment-là, puis il peut se connecter.
+              </>
+            ) : (
+              <>
+                <Text style={{ fontFamily: fonts.semibold, color: c.text }}>{done.email}</Text> doit accepter votre demande depuis son application (valable 7 jours).
+              </>
+            )}
+          </Text>
+        </View>
+        <PrimaryButton title="Retour à mon profil" icon="arrow-forward" onPress={() => (router.canGoBack() ? router.back() : router.replace('/profil'))} />
       </AccountScreen>
     );
   }
 
   return (
-    <AccountScreen title="Ajouter un enfant" subtitle="Suivez son planning, ses bilans et ses paiements.">
+    <AccountScreen title="Ajouter un élève" subtitle="Ajoutez un enfant pour organiser ses cours particuliers et suivre ses progrès académiques.">
+      <View style={[styles.head, { backgroundColor: c.surface, borderColor: c.border }]}>
+        <View style={[styles.photo, { backgroundColor: c.surfaceAlt }]}>
+          <Ionicons name="person-add-outline" size={26} color={c.primary} />
+        </View>
+        <View style={[styles.badge, { backgroundColor: c.accentSoft }]}>
+          <Text style={[t.captionRegular, { color: c.onAccent, fontFamily: fonts.semibold }]}>Nouveau</Text>
+        </View>
+      </View>
       <View style={{ gap: 12 }}>
         <RadioRow
           label="Créer le profil de mon enfant"
@@ -136,7 +164,7 @@ export default function AddChildScreen() {
 
       {mode === 'creer' ? (
         <>
-          <Section title="Son identité">
+          <Section title="Informations personnelles">
             <View style={s.gap}>
               <View style={s.row}>
                 <View style={{ flex: 1 }}>
@@ -155,10 +183,11 @@ export default function AddChildScreen() {
                 value={childEmail}
                 onChangeText={setChildEmail}
               />
+              <Field label="Date de naissance" placeholder="JJ/MM/AAAA" keyboardType="numbers-and-punctuation" value={dob} onChangeText={setDob} />
             </View>
           </Section>
 
-          <Section title="Son niveau" subtitle="Classe et matières à travailler.">
+          <Section title="Niveau scolaire & Spécialités" subtitle="Classe actuelle et matières à travailler.">
             {classes.isLoading ? <ActivityIndicator color={c.primary} /> : null}
             <View style={s.wrap}>
               {niveaux.map(([n]) => (
@@ -224,3 +253,11 @@ export default function AddChildScreen() {
     </AccountScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  head: { alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: radius.lg, padding: 18 },
+  photo: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center' },
+  badge: { borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3 },
+  ok: { width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  mailBox: { borderWidth: 1, borderRadius: radius.md, padding: 14, gap: 6 },
+});

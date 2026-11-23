@@ -61,3 +61,31 @@ export function hoursLabel(h: number | null | undefined): string {
   const min = Math.round((v - whole) * 60);
   return min ? `${whole}h${String(min).padStart(2, '0')}` : `${whole}h`;
 }
+
+/** « 17/05/2012 » → « 2012-05-17 » (null si vide), ou 'invalid'. */
+export function parseFrDate(input: string): string | null | 'invalid' {
+  const v = input.trim();
+  if (!v) return null;
+  const m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(v);
+  if (!m) return 'invalid';
+  const [d, mo, y] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const date = new Date(Date.UTC(y, mo - 1, d));
+  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== mo - 1 || date.getUTCDate() !== d || date > new Date()) return 'invalid';
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+/** Date ISO → « 17/05/2012 ». */
+export function formatFrDate(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
+}
+
+/** « Inscrite depuis sept. 2024 » */
+export function sinceLabel(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return `Inscrit(e) depuis ${d.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}`;
+}

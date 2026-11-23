@@ -1,6 +1,7 @@
 import { Alert, Text, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { Avatar } from '@/components/Avatar';
 import { Card, Notice, PrimaryButton, SecondaryButton } from '@/components/ui';
 import { api } from '@/lib/api';
 import { MY_PARENTS_KEY, relationLabel, useAnswerParentInvite, useMyParents } from '@/lib/parent';
@@ -33,7 +34,7 @@ export function MyParents() {
 
   return (
     <Card>
-      <Text style={[t.cardTitle, { color: c.text }]}>Mes parents / tuteurs</Text>
+      <Text style={[t.cardTitle, { color: c.text }]}>{parents.filter((p) => p.status === 'ACTIVE').length > 1 ? 'Mes tuteurs' : 'Mon tuteur'}</Text>
       {parents.map((p) =>
         p.status === 'PENDING' ? (
           <View key={p.linkId} style={{ gap: 8 }}>
@@ -50,10 +51,12 @@ export function MyParents() {
             </View>
           </View>
         ) : (
-          <View key={p.linkId} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={[t.cardText, { color: c.muted, flex: 1 }]}>
-              {p.parent.name} · {relationLabel(p.relation)}
-            </Text>
+          <View key={p.linkId} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Avatar person={{ id: p.parent.id, firstName: p.parent.name.split(' ')[0] ?? '', lastName: p.parent.name.split(' ')[1] ?? '', role: 'PARENT', profilePicture: p.parent.profilePicture }} size={36} />
+            <View style={{ flex: 1 }}>
+              <Text style={[t.cardText, { color: c.text }]}>{p.parent.name}</Text>
+              <Text style={[t.captionRegular, { color: c.muted }]}>{relationLabel(p.relation)}</Text>
+            </View>
             <Text accessibilityRole="button" onPress={() => removeAccess(p.linkId, p.parent.name)} style={[t.caption, { color: c.link }]}>
               Retirer
             </Text>
