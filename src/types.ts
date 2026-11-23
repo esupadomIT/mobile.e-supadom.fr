@@ -179,6 +179,11 @@ export interface ChildSummary {
   managedByParent: boolean;
   classe: { id: number; nom: string; niveau: string | null } | null;
   totalHours: number;
+  dob?: string | null;
+  phone?: string | null;
+  /** Date d'inscription (« Inscrite depuis sept. 2024 ») */
+  createdAt?: string | null;
+  matieres?: { id: number; nom: string }[];
 }
 
 /** GET /api/v1/parent/children → { children } : invitation en attente ou enfant suivi. */

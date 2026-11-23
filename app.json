@@ -40,7 +40,7 @@
       [
         "expo-notifications",
         {
-          "color": "#2F80ED",
+          "color": "#257DEF",
           "sounds": [
             "./assets/sounds/notif.wav"
           ],

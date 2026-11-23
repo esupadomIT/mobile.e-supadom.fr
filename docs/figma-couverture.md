@@ -1,7 +1,7 @@
 # Couverture des maquettes Figma — app mobile e-Supadom
 
 Maquettes exportées dans `new_Esup/figma/` (une page Figma = un PDF, variantes claire et sombre).
-Dernier export complet : `figma/_export_figma_2026-11-22/` (22/11/2026). Par rapport au 19/11, seules les pages Aide & contact et Trouver un prof sont nouvelles ; les autres sont inchangées.
+Dernier export complet : `figma/_export_figma_2026-11-22b/` (22/11/2026, soir). Par rapport à l'export du matin : nouvelle page « Profil (Élève & Parent) » (espace parent, espace élève, modifier le profil d'un enfant, ajouter un élève), « Trouver un prof » côté parent (commence par l'ajout d'un enfant), e-mail et téléphone du parent à l'inscription élève, bleu principal `#257DEF`.
 Suffixe `-done` = tous les écrans du PDF existent dans l'app avec des données réelles de l'API.
 Aucune donnée ni confirmation fictive n'est affichée : quand l'API ne fournit pas l'information, l'élément est omis.
 
@@ -25,12 +25,17 @@ Règle retenue : l'app reprend **les mêmes fonctionnalités que le site e-supad
 | `e-Supadom-OTP.pdf` | Hors périmètre | — | Maquette « on hold », absente du site |
 | `_export_figma_2026-11-22/Aide-contact.pdf` | Couvert | `aide-contact` (accueil, Rappelez-moi, demande de devis, confirmation) | formulaire « Rappelez-moi », demande de devis |
 | `_export_figma_2026-11-22/Trouver-un-prof.pdf` | Couvert | `trouver-prof` (`FindTeacherWizard`) | `findTeacher` |
+| `_export_figma_2026-11-22b/Profil-Eleve-Parent.pdf` | Couvert | `profil` (espace parent / espace élève), `enfants/ajouter`, `enfants/modifier/[id]`, `enfants/[id]` | — (espace parent propre à l'app) |
+| `_export_figma_2026-11-22b/Trouver-un-prof.pdf` (parent) | Couvert | accueil parent « Trouver un professeur pour votre enfant » → fenêtre « Ajouter un enfant » → `enfants/ajouter` → lien d'activation envoyé à l'enfant | — |
+
+Profil parent : pas de « Mon solde prépayé » (le solde appartient à chaque élève, décision du 22/11). Établissement scolaire et rythme hebdomadaire (« 2 cours / sem. », « 1h30 par séance ») non repris dans l'ajout et la modification d'un enfant. Photo de l'enfant : affichée si elle existe, pas encore modifiable depuis l'app.
 
 Éléments de maquette volontairement non repris (absents du site) : « Échange parent–professeur » séparé, carte enregistrée, rémunération et virements prof (carte « Rémunération » du profil professeur), « +2 ce mois », notifications de paiement ; dans Aide & contact, la question « cours en visio » et le choix des jours / créneau de rappel du devis, ainsi que l'e-mail et le code postal du formulaire « Rappelez-moi ».
 
 ## Routes ajoutées au backend mobile (admin.mobile.e-supadom.fr)
 
 - `POST /api/v1/auth/signup` : inscription élève depuis l'app, sans reCAPTCHA, 3 essais / min / IP.
+- `PATCH /api/v1/parent/children/:studentId/profil` : le parent modifie le profil d'un enfant qu'il a créé (prénom, nom, date de naissance, téléphone, classe, matières).
 - `POST /api/v1/contact/rappel` et `POST /api/devis/v1/submit` : « Rappelez-moi » et demande de devis depuis l'app, sans reCAPTCHA, 3 essais / min / IP ; mêmes e-mails et enregistrement que les routes du site.
 - `POST /api/seance/v1/reserver` : réservation par l'élève, sur un créneau entièrement inclus dans les disponibilités d'un prof qui lui a déjà donné cours, au moins 2 h à l'avance. Type de cours et matière repris du dernier cours ensemble ; création via les mêmes règles que `seance/create` (conflits, solde, débit, lien Meet, e-mails). 409 = avertissements (férié, vacances, disponibilités élève) confirmables avec `force`.
 

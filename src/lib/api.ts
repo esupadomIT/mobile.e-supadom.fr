@@ -86,6 +86,15 @@ export interface DevisBody {
   besoin?: string;
 }
 
+export interface UpdateChildProfileBody {
+  firstName: string;
+  lastName: string;
+  dob: string | null;
+  phone: string | null;
+  classe: number;
+  matieres: number[];
+}
+
 export interface CreateChildBody {
   firstName: string;
   lastName: string;
@@ -364,6 +373,9 @@ export const api = {
       body: JSON.stringify({ email, relation }),
     }),
   childOverview: (studentId: number) => request<ChildOverview>(`/v1/parent/children/${studentId}`),
+  /** « Modifier le profil de Clara » : enfant créé par le parent uniquement. */
+  updateChildProfile: (studentId: number, body: UpdateChildProfileBody) =>
+    request<{ studentId: number }>(`/v1/parent/children/${studentId}/profil`, { method: 'PATCH', body: JSON.stringify(body) }),
   updateChild: (studentId: number, body: { relation?: ParentRelation; isPayer?: boolean; canBook?: boolean }) =>
     request<{ id: number }>(`/v1/parent/children/${studentId}`, { method: 'PATCH', body: JSON.stringify(body) }),
   removeChild: (studentId: number) => request<{ ok: true }>(`/v1/parent/children/${studentId}`, { method: 'DELETE' }),

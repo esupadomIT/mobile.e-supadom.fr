@@ -41,6 +41,8 @@ export default function StudentSignupScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
+  const [emailParent, setEmailParent] = useState('');
+  const [phoneParent, setPhoneParent] = useState('');
   const [city, setCity] = useState('');
   const [postalCode, setPostalCode] = useState('');
 
@@ -85,6 +87,8 @@ export default function StudentSignupScreen() {
   const nextFromContact = () => {
     if (!firstName.trim() || !lastName.trim()) return setError('Renseignez le prénom et le nom.');
     if (phone.replace(/\D/g, '').length < 9) return setError('Renseignez un numéro de téléphone valide.');
+    if (emailParent.trim() && !EMAIL.test(emailParent.trim())) return setError('L’e-mail du parent est invalide.');
+    if (phoneParent.trim() && phoneParent.replace(/\D/g, '').length < 9) return setError('Le téléphone du parent est invalide.');
     if (!city.trim()) return setError('Renseignez la ville.');
     if (!/^\d{4,10}$/.test(postalCode.trim())) return setError('Renseignez un code postal valide.');
     go(2);
@@ -109,11 +113,11 @@ export default function StudentSignupScreen() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phone: phone.trim(),
-        phoneParent: isParent ? phone.trim() : undefined,
+        phoneParent: isParent ? phone.trim() : phoneParent.trim() || undefined,
         city: city.trim(),
         postalCode: postalCode.trim(),
         email: mail,
-        emailParent: isParent ? mail : undefined,
+        emailParent: isParent ? mail : emailParent.trim().toLowerCase() || undefined,
         password,
         classe: classeId!,
         classeName: classe?.nom,
@@ -187,6 +191,20 @@ export default function StudentSignupScreen() {
             </View>
           </View>
           <Field label={isParent ? 'Votre téléphone *' : 'Téléphone *'} placeholder="06 12 34 56 78" keyboardType="phone-pad" autoComplete="tel" value={phone} onChangeText={setPhone} />
+          {!isParent ? (
+            <>
+              <Field
+                label="Email parent"
+                placeholder="parent@exemple.fr"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="off"
+                value={emailParent}
+                onChangeText={setEmailParent}
+              />
+              <Field label="Téléphone parent" placeholder="06 12 34 56 78" keyboardType="phone-pad" autoComplete="off" value={phoneParent} onChangeText={setPhoneParent} />
+            </>
+          ) : null}
           <View style={s.row}>
             <View style={{ flex: 1 }}>
               <Field label="Ville *" placeholder="Lyon" value={city} onChangeText={setCity} autoComplete="postal-address-locality" />

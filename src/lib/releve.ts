@@ -46,7 +46,7 @@ export function releveHtml(paiements: Reglement[], who: { firstName?: string | n
   h1 { text-align: center; font-size: 20px; margin: 0 0 18px; }
   .info { color: #646464; line-height: 1.7; border-bottom: 1px solid #c8c8c8; padding-bottom: 10px; margin-bottom: 14px; }
   table { width: 100%; border-collapse: collapse; }
-  th { background: #2980b9; color: #fff; text-align: left; font-size: 10px; padding: 6px; border: 1px solid #c8c8c8; }
+  th { background: #257DEF; color: #fff; text-align: left; font-size: 10px; padding: 6px; border: 1px solid #c8c8c8; }
   td { padding: 5px 6px; border: 1px solid #c8c8c8; font-size: 9px; }
   tr:nth-child(even) td { background: #f5f5f5; }
   .num { white-space: nowrap; }

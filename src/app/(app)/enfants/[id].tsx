@@ -77,6 +77,12 @@ export default function ChildScreen() {
           {referent ? `Professeur référent : ${referent.name}` : 'Pas encore de professeur attitré'}
         </Text>
         <Text style={[t.captionRegular, { color: c.link }]}>Vous : {relationLabel(data.relation)}</Text>
+        {child.managedByParent ? (
+          <SecondaryButton
+            title={`Modifier le profil ${child.firstName}`}
+            onPress={() => router.push({ pathname: '/enfants/modifier/[id]', params: { id: String(studentId) } })}
+          />
+        ) : null}
       </Card>
 
       <Card>

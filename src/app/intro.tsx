@@ -35,7 +35,7 @@ const C = {
   soft: 'rgba(255, 255, 255, 0.82)',
   badge: 'rgba(255, 255, 255, 0.16)',
   dotOff: 'rgba(255, 255, 255, 0.45)',
-  primary: '#2865AB',
+  primary: '#257DEF',
 };
 
 export default function IntroScreen() {
