@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { AccountScreen } from '@/components/AccountScreen';
@@ -59,8 +59,7 @@ export default function EditChildScreen() {
   });
 
   // Pré-remplissage une fois le profil et les classes chargés
-  useEffect(() => {
-    if (ready || !child || !classes.data) return;
+  if (!ready && child && classes.data) {
     setFirstName(child.firstName ?? '');
     setLastName(child.lastName ?? '');
     setDob(formatFrDate(child.dob));
@@ -72,7 +71,7 @@ export default function EditChildScreen() {
     setClasseId(child.classe?.id ?? null);
     setMatieres((child.matieres ?? []).map((m) => m.id));
     setReady(true);
-  }, [child, classes.data, ready]);
+  }
 
   const save = async () => {
     setSaved(false);

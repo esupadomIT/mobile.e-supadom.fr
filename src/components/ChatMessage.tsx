@@ -1,9 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Card } from '@/components/ui';
 import { fileUrl, formatTime, messageText } from '@/lib/format';
-import { typography as t, useColors } from '@/theme';
+import { fonts, typography as t, useColors } from '@/theme';
 import type { Attachment, Message } from '@/types';
 
 /**
@@ -15,19 +14,34 @@ export function MessageCard({ message, mine, name }: { message: Message; mine: b
   const c = useColors();
   const text = messageText(message);
   return (
-    <View style={styles.group}>
-      {text || name ? (
-        <Card tone={mine ? 'info' : 'default'}>
-          {name ? <Text style={[t.cardTitle, { color: c.text }]}>{name}</Text> : null}
-          {text ? (
-            <Text style={[t.cardText, { color: c.muted }]} selectable>
-              {text}
-            </Text>
-          ) : null}
-          {!name ? <Text style={[t.captionRegular, { color: c.subtle }]}>{formatTime(message.createdAt)}</Text> : null}
-        </Card>
+    <View style={[styles.group, { alignSelf: mine ? 'flex-end' : 'flex-start' }]}>
+      {name ? (
+        <Text style={[styles.meta, { color: c.muted, textAlign: mine ? 'right' : 'left' }]}>
+          {name} · {formatTime(message.createdAt)}
+        </Text>
       ) : null}
-      {message.attachments?.map((a) => <AttachmentCard key={a.id} attachment={a} />)}
+      <View
+        style={[
+          styles.bubble,
+          {
+            backgroundColor: mine ? c.surfaceAlt : c.surface,
+            borderTopLeftRadius: mine ? 12 : 3,
+            borderTopRightRadius: mine ? 3 : 12,
+          },
+        ]}
+      >
+        {text ? (
+          <Text selectable style={[styles.message, { color: c.text }]}>
+            {text}
+          </Text>
+        ) : null}
+        {message.attachments?.map((a) => (
+          <AttachmentCard key={a.id} attachment={a} />
+        ))}
+      </View>
+      {mine ? (
+        <Text style={[styles.receipt, { color: c.onAccent }]}>{message.isRead ? '✓✓ Lu' : '✓ Envoyé'}</Text>
+      ) : null}
     </View>
   );
 }
@@ -35,13 +49,20 @@ export function MessageCard({ message, mine, name }: { message: Message; mine: b
 /** Carte « Annales Bac · Équations » / « PDF · 248 Ko » avec icône document. */
 export function AttachmentCard({ attachment }: { attachment: Attachment }) {
   const c = useColors();
-  const ext = (attachment.fileName?.split('.').pop() || attachment.fileType.split('/').pop() || 'fichier').toUpperCase();
+  const ext = (
+    attachment.fileName?.split('.').pop() ||
+    attachment.fileType.split('/').pop() ||
+    'fichier'
+  ).toUpperCase();
   return (
     <Pressable
       accessibilityRole="link"
       accessibilityLabel={`Ouvrir ${attachment.fileName || 'la pièce jointe'}`}
       onPress={() => Linking.openURL(fileUrl(attachment.fileUrl))}
-      style={({ pressed }) => [styles.attachment, { backgroundColor: c.surfaceAlt, borderColor: pressed ? c.focus : c.border }]}
+      style={({ pressed }) => [
+        styles.attachment,
+        { backgroundColor: c.surfaceAlt, borderColor: pressed ? c.focus : c.border },
+      ]}
     >
       <Text style={[t.cardTitle, { color: c.text }]} numberOfLines={2}>
         {attachment.fileName || 'Pièce jointe'}
@@ -58,8 +79,7 @@ export function AttachmentCard({ attachment }: { attachment: Attachment }) {
  * s'il a le même auteur à moins de 5 min, le même jour.
  */
 export type ChatRow =
-  | { kind: 'day'; key: string; date: string }
-  | { kind: 'message'; key: string; message: Message; showName: boolean };
+  { kind: 'day'; key: string; date: string } | { kind: 'message'; key: string; message: Message; showName: boolean };
 
 export function chatRows(messages: Message[]): ChatRow[] {
   const out: ChatRow[] = [];
@@ -67,7 +87,9 @@ export function chatRows(messages: Message[]): ChatRow[] {
     const older = messages[i + 1];
     const sameDayAsOlder = !!older && new Date(older.createdAt).toDateString() === new Date(m.createdAt).toDateString();
     const followsOlder =
-      sameDayAsOlder && older.senderId === m.senderId && +new Date(m.createdAt) - +new Date(older.createdAt) < 5 * 60_000;
+      sameDayAsOlder &&
+      older.senderId === m.senderId &&
+      +new Date(m.createdAt) - +new Date(older.createdAt) < 5 * 60_000;
     out.push({ kind: 'message', key: `m${m.id}`, message: m, showName: !followsOlder });
     if (!sameDayAsOlder) out.push({ kind: 'day', key: `d${m.id}`, date: m.createdAt });
   });
@@ -75,6 +97,10 @@ export function chatRows(messages: Message[]): ChatRow[] {
 }
 
 const styles = StyleSheet.create({
-  group: { gap: 16, marginBottom: 16 },
-  attachment: { borderWidth: 1, borderRadius: 14, padding: 16, gap: 8 },
+  group: { gap: 5, marginBottom: 14, maxWidth: '88%', minWidth: 80 },
+  bubble: { padding: 12, borderRadius: 12, gap: 8 },
+  message: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 19 },
+  meta: { fontFamily: fonts.medium, fontSize: 10, lineHeight: 15 },
+  receipt: { fontFamily: fonts.medium, fontSize: 9, lineHeight: 14, textAlign: 'right' },
+  attachment: { borderWidth: 1, borderRadius: 8, padding: 10, gap: 4 },
 });

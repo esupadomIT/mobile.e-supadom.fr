@@ -1,11 +1,14 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { ChatHeader } from '@/components/Messaging';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -13,17 +16,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppHeader } from '@/components/AppHeader';
 import { MessageCard } from '@/components/ChatMessage';
-import { Card, PrimaryButton, SecondaryButton } from '@/components/ui';
+import { Card, SecondaryButton } from '@/components/ui';
 import { CHAT_POLL_MS } from '@/config';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { CHAT_KEY, messagesKey, useAppendMessage, useChat, useMessages } from '@/lib/chat';
-import { dayLabel, formatTime, fullName } from '@/lib/format';
+import { dayLabel, formatTime } from '@/lib/format';
 import { setActiveChatPartner } from '@/lib/push';
 import { fonts, typography as t, useColors } from '@/theme';
-import type { Message, Role } from '@/types';
+import type { Message } from '@/types';
 
 /** Maquette Figma « 📨 Parcours Messages » → écran « Marc Lambert · Clair / Sombre » (53:24408). */
 
@@ -31,7 +33,6 @@ const MAX_LENGTH = 5000;
 const PAGE = 50;
 const MAX_PAGE = 200;
 
-const roleLong = (role: Role) => (role === 'INSTRUCTOR' ? 'Professeur' : role === 'STUDENT' ? 'Élève' : 'Équipe e-Supadom');
 
 export default function ChatScreen() {
   const { partnerId: partnerParam } = useLocalSearchParams<{ partnerId: string }>();
@@ -97,38 +98,31 @@ export default function ChatScreen() {
   // nom omise) s'il a le même auteur à moins de 5 min.
   const rows = useMemo(() => {
     const out: Row[] = [];
-    const lastMine = messages.find((m) => m.senderId === user?.id);
     messages.forEach((m, i) => {
       const older = messages[i + 1];
-      if (m === lastMine && i === 0) out.push({ kind: 'status', key: `s${m.id}`, message: m });
       const sameDayAsOlder = older && new Date(older.createdAt).toDateString() === new Date(m.createdAt).toDateString();
       const followsOlder =
-        !!sameDayAsOlder && older.senderId === m.senderId && +new Date(m.createdAt) - +new Date(older.createdAt) < 5 * 60_000;
+        !!sameDayAsOlder &&
+        older.senderId === m.senderId &&
+        +new Date(m.createdAt) - +new Date(older.createdAt) < 5 * 60_000;
       out.push({ kind: 'message', key: `m${m.id}`, message: m, showName: !followsOlder });
       if (!sameDayAsOlder) {
-        out.push({ kind: 'day', key: `d${m.id}`, label: `${dayLabel(m.createdAt)} · ${formatTime(m.createdAt)}`.toUpperCase() });
+        out.push({
+          kind: 'day',
+          key: `d${m.id}`,
+          label: `${dayLabel(m.createdAt)} · ${formatTime(m.createdAt)}`.toUpperCase(),
+        });
       }
     });
     return out;
-  }, [messages, user?.id]);
+  }, [messages]);
 
   const canSend = !!draft.trim() && !send.isPending && !!partner;
-
-  // Titre de l'écran : en haut de l'historique (pied de la liste inversée)
-  const title = (
-    <View style={styles.titleBlock}>
-      <Text style={[t.title, { color: c.text }]} numberOfLines={2}>
-        {partner ? fullName(partner) : 'Conversation'}
-      </Text>
-      {partner ? <Text style={[t.body, { color: c.muted }]}>{roleLong(partner.role)}</Text> : null}
-      {page?.hasMore && limit < MAX_PAGE ? <ActivityIndicator color={c.subtle} /> : null}
-    </View>
-  );
 
   return (
     <SafeAreaView edges={['bottom']} style={[styles.flex, { backgroundColor: c.bg }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <AppHeader onBack={() => (router.canGoBack() ? router.back() : router.replace('/messages'))} />
+      <ChatHeader partner={partner} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {isLoading ? (
           <ActivityIndicator style={styles.flex} color={c.primary} />
@@ -136,7 +130,9 @@ export default function ChatScreen() {
           <View style={styles.error}>
             <Card>
               <Text style={[t.cardTitle, { color: c.text }]}>Conversation indisponible</Text>
-              <Text style={[t.cardText, { color: c.muted }]}>Vérifiez votre connexion, puis réessayez. Votre brouillon est conservé.</Text>
+              <Text style={[t.cardText, { color: c.muted }]}>
+                Vérifiez votre connexion, puis réessayez. Votre brouillon est conservé.
+              </Text>
             </Card>
             <SecondaryButton title="Réessayer" onPress={() => void refetch()} />
           </View>
@@ -148,7 +144,11 @@ export default function ChatScreen() {
             contentContainerStyle={styles.list}
             onEndReached={loadOlder}
             onEndReachedThreshold={0.3}
-            ListFooterComponent={title}
+            ListFooterComponent={
+              page?.hasMore && limit < MAX_PAGE ? (
+                <SecondaryButton title="Messages précédents" onPress={loadOlder} />
+              ) : undefined
+            }
             ListEmptyComponent={
               <View style={styles.flipped}>
                 <Card tone="info">
@@ -175,9 +175,7 @@ export default function ChatScreen() {
                 );
               }
               const mine = item.message.senderId === user?.id;
-              const name = mine
-                ? `${user?.firstName ?? 'Moi'} · Vous`
-                : partner?.firstName ?? 'Correspondant';
+              const name = mine ? `${user?.firstName ?? 'Moi'} · Vous` : (partner?.firstName ?? 'Correspondant');
               return <MessageCard message={item.message} mine={mine} name={item.showName ? name : null} />;
             }}
           />
@@ -186,15 +184,14 @@ export default function ChatScreen() {
         {/* Carte « Votre réponse » + « Envoyer le message » */}
         <View style={styles.composer}>
           {send.isError ? (
-            <Text style={[t.cardText, { color: c.danger }]}>
+            <Text style={[t.cardText, { color: c.danger, width: '100%' }]}>
               {send.error instanceof Error ? send.error.message : 'Message non envoyé. Réessayez.'}
             </Text>
           ) : null}
           <View style={[styles.replyCard, { backgroundColor: c.surface, borderColor: focused ? c.focus : c.border }]}>
-            <Text style={[t.cardTitle, { color: c.text }]}>Votre réponse</Text>
             <TextInput
               style={[t.cardText, styles.input, { color: c.text }]}
-              placeholder={partner ? `Écrire à ${partner.firstName}…` : 'Écrire un message…'}
+              placeholder="Écrire un message…"
               placeholderTextColor={c.subtle}
               value={draft}
               onChangeText={setDraft}
@@ -206,7 +203,28 @@ export default function ChatScreen() {
               accessibilityLabel="Votre réponse"
             />
           </View>
-          <PrimaryButton title="Envoyer le message" onPress={onSend} loading={send.isPending} disabled={!canSend} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Envoyer le message"
+            accessibilityState={{ disabled: !canSend, busy: send.isPending }}
+            disabled={!canSend}
+            onPress={onSend}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: c.primary,
+              opacity: canSend ? 1 : 0.45,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {send.isPending ? (
+              <ActivityIndicator color={c.onPrimary} />
+            ) : (
+              <Ionicons name="arrow-up" size={21} color={c.onPrimary} />
+            )}
+          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -220,13 +238,23 @@ type Row =
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  list: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 8, flexGrow: 1 },
+  list: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 12, flexGrow: 1 },
   error: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 24, gap: 16, flex: 1 },
   flipped: { transform: [{ scaleY: -1 }] }, // la liste est inversée
   titleBlock: { gap: 16, paddingTop: 24, paddingBottom: 16 },
-  row: { marginBottom: 16 },
+  row: { marginVertical: 16, textAlign: 'center', fontSize: 10 },
   status: { marginTop: -8, marginBottom: 16 },
-  composer: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, gap: 16 },
-  replyCard: { borderWidth: 1, borderRadius: 14, padding: 16, gap: 8 },
+  composer: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    flexWrap: 'wrap',
+  },
+  replyCard: { flex: 1, borderWidth: 1, borderRadius: 24, paddingHorizontal: 14, paddingVertical: 12, minHeight: 44 },
   input: { minHeight: 20, maxHeight: 120, padding: 0, fontFamily: fonts.regular, textAlignVertical: 'top' },
 });

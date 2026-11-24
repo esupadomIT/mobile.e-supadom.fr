@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader } from '@/components/AppHeader';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { InboxFilters, InboxRow } from '@/components/Messaging';
 import { Card, PrimaryButton, SecondaryButton } from '@/components/ui';
 import { LIST_POLL_MS } from '@/config';
 import { useManualRefresh } from '@/hooks/useManualRefresh';
@@ -19,6 +20,8 @@ import type { ChildConversation } from '@/types';
  */
 export function ParentMessages() {
   const c = useColors();
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
   const { enfant } = useLocalSearchParams<{ enfant?: string }>();
   const only = Number(enfant) || null;
 
@@ -27,39 +30,78 @@ export function ParentMessages() {
     () => activeChildren(childrenQuery.data).filter((ch) => !only || ch.studentId === only),
     [childrenQuery.data, only],
   );
-  const results = useChildrenConversations(children.map((ch) => ch.studentId), LIST_POLL_MS);
+  const results = useChildrenConversations(
+    children.map((ch) => ch.studentId),
+    LIST_POLL_MS,
+  );
   const { refreshing, onRefresh } = useManualRefresh(() =>
     Promise.all([childrenQuery.refetch(), ...results.map((r) => r.refetch())]),
   );
 
   const loading = childrenQuery.isLoading || results.some((r) => r.isLoading);
   const failed = childrenQuery.isError || results.some((r) => r.isError);
-  const sections = children.map((child, i) => ({ child, conversations: results[i]?.data?.conversations ?? [] }));
+  const sections = children.map((child, i) => ({
+    child,
+    conversations: (results[i]?.data?.conversations ?? []).filter(
+      (conv) =>
+        (fullName(conv.partner) + ' ' + child.firstName + ' ' + messagePreview(conv.lastMessage))
+          .toLocaleLowerCase('fr')
+          .includes(search.trim().toLocaleLowerCase('fr')) &&
+        (filter !== 'files' || !!conv.lastMessage.attachments?.length),
+    ),
+  }));
   const total = sections.reduce((n, s) => n + s.conversations.length, 0);
   const showNames = sections.length > 1;
 
   const open = (studentId: number, partnerId: number) =>
-    router.push({ pathname: '/echange/[studentId]/[partnerId]', params: { studentId: String(studentId), partnerId: String(partnerId) } });
+    router.push({
+      pathname: '/echange/[studentId]/[partnerId]',
+      params: { studentId: String(studentId), partnerId: String(partnerId) },
+    });
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <AppHeader />
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.bg }}>
       <ScrollView
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
       >
-        <Text style={[t.title, { color: c.text }]}>Messages</Text>
+        <Text style={[t.title, { color: c.text, fontSize: 22, lineHeight: 30 }]}>Messages</Text>
         <Text style={[t.body, { color: c.muted }]}>
-          {only && children[0] ? `Les échanges de ${children[0].firstName} avec ses professeurs.` : 'Les échanges de vos enfants avec leurs professeurs.'}
+          {only && children[0]
+            ? `Les échanges de ${children[0].firstName} avec ses professeurs.`
+            : 'Les échanges de vos enfants avec leurs professeurs.'}
         </Text>
 
         <Card tone="info">
-          <Text style={[t.cardTitle, { color: c.text }]}>Lecture seule</Text>
+          <Text style={[t.cardTitle, { color: c.text }]}>SUPERVISION PARENTALE</Text>
           <Text style={[t.cardText, { color: c.muted }]}>
-            Vous pouvez consulter l’historique des conversations, mais pas y répondre.
+            Mode lecture seule · Consultez les échanges de vos enfants.
           </Text>
         </Card>
 
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          {[
+            { id: null, name: 'Tous mes enfants' },
+            ...activeChildren(childrenQuery.data).map((child) => ({ id: child.studentId, name: child.firstName })),
+          ].map((item) => (
+            <Pressable
+              key={item.id ?? 'all'}
+              accessibilityRole="button"
+              accessibilityState={{ selected: only === item.id }}
+              onPress={() => router.setParams({ enfant: item.id ? String(item.id) : undefined })}
+              style={{
+                minHeight: 40,
+                justifyContent: 'center',
+                paddingHorizontal: 12,
+                borderRadius: 20,
+                backgroundColor: only === item.id ? c.primary : c.surface,
+              }}
+            >
+              <Text style={[t.caption, { color: only === item.id ? c.onPrimary : c.muted }]}>{item.name}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+        <InboxFilters search={search} onSearch={setSearch} filter={filter} onFilter={setFilter} files={false} />
         {loading ? (
           <ActivityIndicator color={c.primary} style={styles.loader} />
         ) : failed ? (
@@ -109,9 +151,11 @@ export function ParentMessages() {
           )
         )}
 
-        {only ? <SecondaryButton title="Voir tous les échanges" onPress={() => router.setParams({ enfant: undefined })} /> : null}
+        {only ? (
+          <SecondaryButton title="Voir tous les échanges" onPress={() => router.setParams({ enfant: undefined })} />
+        ) : null}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -127,26 +171,21 @@ function ExchangeCard({
   childName: string;
   onPress: () => void;
 }) {
-  const c = useColors();
-  const { partner, lastMessage, totalMessages } = conversation;
+  const { partner, lastMessage } = conversation;
   const author = lastMessage.senderId === childId ? childName : partner.firstName;
   return (
-    <Card onPress={onPress} accessibilityLabel={`Échange entre ${childName} et ${fullName(partner)}`}>
-      <Text style={[t.cardTitle, { color: c.text }]}>
-        {fullName(partner)} · {conversationWhen(lastMessage.createdAt)}
-      </Text>
-      <Text style={[t.cardText, { color: c.muted }]} numberOfLines={2}>
-        {author} : {messagePreview(lastMessage)}
-      </Text>
-      <Text style={[t.caption, { color: c.link }]}>
-        PROFESSEUR · {totalMessages} MESSAGE{totalMessages > 1 ? 'S' : ''}
-      </Text>
-    </Card>
+    <InboxRow
+      partner={partner}
+      preview={author + ' : ' + messagePreview(lastMessage)}
+      date={conversationWhen(lastMessage.createdAt)}
+      child={childName}
+      onPress={onPress}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  list: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 24, paddingBottom: 40, gap: 16 },
+  list: { width: '100%', maxWidth: 760, alignSelf: 'center', padding: 20, paddingBottom: 24, gap: 12 },
   loader: { marginTop: 24 },
   section: { gap: 12 },
 });

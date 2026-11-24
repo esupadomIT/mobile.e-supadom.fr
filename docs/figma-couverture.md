@@ -57,3 +57,9 @@ Tests : `npm test` (77 tests, dont ces deux routes).
 
 - « Le bon rythme pour vous » : les créneaux choisis à l'inscription sont gardés sur le téléphone, puis envoyés (`POST /student-availability`) à la première connexion du compte.
 - Statut de séance terminée : lu dans les champs `seance_effectuee*` (cron Google Meet), même règle « prof seul » que le site ; lien d'enregistrement s'il existe.
+
+## Reprise des captures Messages du 23/11/2026
+
+La nouvelle capture fournie par l’utilisateur remplace les anciennes grandes cartes de conversation. Professeur et élève partagent désormais exactement le même écran Messages et les mêmes bulles : en-tête avec avatar, recherche, filtres, aperçus compacts, saisie en pied avec bouton fléché. L’onglet Messages conserve maintenant la barre de navigation. Le parent reprend les lignes et bulles communes avec sélection d’enfant et supervision en lecture seule.
+
+Limites explicites : le filtre « Fichiers récents » porte sur les derniers messages fournis par la liste API ; l’historique complet reste dans chaque conversation. L’API parent ne fournit pas de compteur de non-lus ; aucun compteur ni présence en ligne fictifs. Pas d’ajout d’envoi de pièce jointe dans cette reprise. Validation visuelle sur appareil réel encore à effectuer : ne pas confondre vérification TypeScript/lint et comparaison pixel à pixel.

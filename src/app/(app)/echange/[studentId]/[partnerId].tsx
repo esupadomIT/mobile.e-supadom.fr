@@ -1,13 +1,13 @@
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppHeader } from '@/components/AppHeader';
+import { ChatHeader } from '@/components/Messaging';
 import { chatRows, MessageCard } from '@/components/ChatMessage';
 import { Card, SecondaryButton } from '@/components/ui';
 import { CHAT_POLL_MS } from '@/config';
-import { dayLabel, formatTime, fullName } from '@/lib/format';
+import { dayLabel, formatTime } from '@/lib/format';
 import { activeChildren, useChildMessages, useChildren } from '@/lib/parent';
 import { typography as t, useColors } from '@/theme';
 
@@ -40,20 +40,10 @@ export default function ChildExchangeScreen() {
     if (page?.hasMore && limit < MAX_PAGE) setLimit((l) => Math.min(MAX_PAGE, l + PAGE));
   };
 
-  const title = (
-    <View style={styles.titleBlock}>
-      <Text style={[t.title, { color: c.text }]} numberOfLines={2}>
-        {partner ? fullName(partner) : 'Échange'}
-      </Text>
-      <Text style={[t.body, { color: c.muted }]}>Professeur · échanges avec {childName}</Text>
-      {page?.hasMore && limit < MAX_PAGE ? <ActivityIndicator color={c.subtle} /> : null}
-    </View>
-  );
-
   return (
     <SafeAreaView edges={['bottom']} style={[styles.flex, { backgroundColor: c.bg }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <AppHeader onBack={() => (router.canGoBack() ? router.back() : router.replace('/messages'))} />
+      <ChatHeader partner={partner} subtitle={'Échanges avec ' + childName + ' · Lecture seule'} />
       {isLoading ? (
         <ActivityIndicator style={styles.flex} color={c.primary} />
       ) : isError ? (
@@ -72,7 +62,11 @@ export default function ChildExchangeScreen() {
           contentContainerStyle={styles.list}
           onEndReached={loadOlder}
           onEndReachedThreshold={0.3}
-          ListFooterComponent={title}
+          ListFooterComponent={
+            page?.hasMore && limit < MAX_PAGE ? (
+              <SecondaryButton title="Messages précédents" onPress={loadOlder} />
+            ) : undefined
+          }
           ListEmptyComponent={
             <View style={styles.flipped}>
               <Card tone="info">
@@ -104,9 +98,7 @@ export default function ChildExchangeScreen() {
       <View style={styles.footer}>
         <Card tone="info" accessibilityLabel="Lecture seule">
           <Text style={[t.cardTitle, { color: c.text }]}>Lecture seule</Text>
-          <Text style={[t.cardText, { color: c.muted }]}>
-            Vous consultez les échanges de {childName}. Les échanges restent associés au dossier de {childName}.
-          </Text>
+          <Text style={[t.cardText, { color: c.muted }]}>Les échanges restent associés au dossier de {childName}.</Text>
         </Card>
       </View>
     </SafeAreaView>
@@ -116,9 +108,16 @@ export default function ChildExchangeScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   padded: { padding: 24, gap: 16 },
-  list: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 8, flexGrow: 1 },
+  list: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 8, flexGrow: 1 },
   flipped: { transform: [{ scaleY: -1 }] },
   titleBlock: { gap: 16, paddingTop: 24, paddingBottom: 16 },
-  day: { marginBottom: 16 },
-  footer: { width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16 },
+  day: { marginVertical: 16, textAlign: 'center', fontSize: 10 },
+  footer: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
 });

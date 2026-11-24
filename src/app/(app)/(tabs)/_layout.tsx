@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, Tabs } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { View, type ColorValue } from 'react-native';
 
 import { useChat } from '@/lib/chat';
@@ -49,13 +49,6 @@ export default function TabsLayout() {
           tabBarIcon: icon('chatbubble', 'chatbubble-outline'),
           tabBarBadge: unread > 99 ? '99+' : unread > 0 ? unread : undefined,
           tabBarBadgeStyle: { backgroundColor: c.notification, color: c.onNotification, fontFamily: fonts.bold, fontSize: 10 },
-        }}
-        listeners={{
-          // La messagerie est un écran de la pile (avec retour) : l'onglet l'ouvre par-dessus.
-          tabPress: (e) => {
-            e.preventDefault();
-            router.push('/messages');
-          },
         }}
       />
       <Tabs.Screen name="profil" options={{ title: 'Profil', tabBarIcon: icon('person', 'person-outline') }} />
